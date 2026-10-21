@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+/*
+ * Default brand values — overridden per-request in layout.tsx from Settings.theme
+ * (GET /api/v1/settings/public), so an Appearance change in the admin panel
+ * repaints the storefront without a redeploy. Keep in sync with
+ * ../../admin/src/index.css and ../../docs/DESIGN_TOKENS.md.
+ */
+:root {
+  --brand-bg-dark: #1a1310;
+  --brand-surface-dark: #241a15;
+  --brand-primary: #6b3410;
+  --brand-primary-dark: #4a230a;
+  --brand-accent: #d4932f;
+  --brand-gradient-from: #6b3410;
+  --brand-gradient-to: #d4932f;
+  --brand-card: #ffffff;
+  --brand-text-on-dark: #f5efe9;
+  --brand-text-muted: #a89a8f;
+  /* The page canvas: one step lighter than the header and footer (--brand-bg-dark), so the dark bars
+     frame the page the way they do in the reference design. Derived from bg-dark rather than a theme
+     field of its own, so an Appearance change still repaints everything together. */
+  --brand-page-bg: color-mix(in srgb, var(--brand-bg-dark) 90%, white);
+}
+
+@theme inline {
+  --color-brand-bg-dark: var(--brand-bg-dark);
+  --color-brand-surface-dark: var(--brand-surface-dark);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-primary-dark: var(--brand-primary-dark);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-card: var(--brand-card);
+  --color-brand-text-on-dark: var(--brand-text-on-dark);
+  --color-brand-text-muted: var(--brand-text-muted);
+  --color-brand-page: var(--brand-page-bg);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background: var(--brand-page-bg);
+  color: var(--brand-text-on-dark);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Solid brand fill — class name kept as-is since it's used across dozens of components,
+   but it's a fixed color now, not a deep-to-light gradient. */
+.brand-gradient {
+  background-color: var(--brand-primary);
+}
+
+/* Brand-colored text for the dark page background (the logo wordmark, the 404 numeral). The primary
+   color is a dark brown that's unreadable there, so this uses the accent. */
+.text-gradient {
+  color: var(--brand-accent);
+}
+
+/* Text written in the admin's rich text editor (static pages). Mirrors the look of the Markdown renderer in
+   components/ui/Markdown.tsx. The HTML itself is cleaned by the API when a page is saved. */
+.rich-text > * + * {
+  margin-top: 1rem;
+}
+.rich-text h2 {
+  @apply text-xl font-bold text-slate-800;
+}
+.rich-text h3 {
+  @apply text-lg font-semibold text-slate-800;
+}
+.rich-text h4 {
+  @apply font-semibold text-slate-700;
+}
+.rich-text ul {
+  @apply list-disc space-y-1.5 pl-5;
+}
+.rich-text ol {
+  @apply list-decimal space-y-1.5 pl-5;
+}
+.rich-text li > p {
+  margin-top: 0;
+}
+.rich-text a {
+  @apply font-medium text-brand-primary underline underline-offset-2 hover:text-brand-accent;
+}
+.rich-text blockquote {
+  @apply border-l-4 border-brand-accent/60 pl-4 text-slate-500 italic;
+}
+.rich-text hr {
+  @apply border-slate-200;
+}
+.rich-text img {
+  @apply h-auto max-w-full rounded-lg;
+}
+.rich-text code {
+  @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-[0.9em];
+}
+.rich-text pre {
+  @apply overflow-x-auto rounded-lg bg-slate-100 p-3 font-mono text-xs;
+}
+.rich-text pre code {
+  @apply bg-transparent p-0;
+}
+.rich-text table {
+  @apply w-full border-collapse text-left;
+}
+.rich-text th {
+  @apply border border-slate-200 bg-slate-50 px-3 py-2 font-semibold text-slate-700;
+}
+.rich-text td {
+  @apply border border-slate-200 px-3 py-2;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The fade a page's content gets on a client-side navigation (see app/template.tsx). It only ever runs
+   from "slightly hidden" to the element's own state, so it can't strand a page invisible. */
+@keyframes route-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.animate-route-in {
+  animation: route-in 0.3s ease-out backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-route-in {
+    animation: none;
+  }
+}

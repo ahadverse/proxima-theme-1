@@ -1,0 +1,53 @@
+import { Router } from 'express';
+import authRoutes from './auth.routes.js';
+import adminAuthRoutes from './admin/auth.routes.js';
+import settingsRoutes from './settings.routes.js';
+import categoryRoutes from './category.routes.js';
+import brandRoutes from './brand.routes.js';
+import attributeRoutes from './attribute.routes.js';
+import productRoutes from './product.routes.js';
+import uploadRoutes from './upload.routes.js';
+import cartRoutes from './cart.routes.js';
+import orderRoutes from './order.routes.js';
+import faqRoutes from './faq.routes.js';
+import blogRoutes from './blog.routes.js';
+import incompleteOrderRoutes from './incompleteOrder.routes.js';
+import paymentRoutes from './payment.routes.js';
+import dashboardRoutes from './dashboard.routes.js';
+import inventoryRoutes from './inventory.routes.js';
+import couponRoutes from './coupon.routes.js';
+import customerRoutes from './customer.routes.js';
+import reviewAdminRoutes from './reviewAdmin.routes.js';
+import bannerRoutes from './banner.routes.js';
+import pageRoutes from './page.routes.js';
+import analyticsRoutes from './analytics.routes.js';
+import { refreshCatalogOnWrite } from '../middlewares/refreshStorefront.middleware.js';
+
+const router = Router();
+
+router.get('/health', (req, res) => res.json({ success: true, message: 'Maroon API is running' }));
+
+router.use('/auth', authRoutes);
+router.use('/admin/auth', adminAuthRoutes);
+router.use('/settings', settingsRoutes);
+router.use('/categories', refreshCatalogOnWrite, categoryRoutes);
+router.use('/brands', refreshCatalogOnWrite, brandRoutes);
+router.use('/attributes', refreshCatalogOnWrite, attributeRoutes);
+router.use('/products', refreshCatalogOnWrite, productRoutes);
+router.use('/uploads', uploadRoutes);
+router.use('/cart', cartRoutes);
+router.use('/orders', orderRoutes);
+router.use('/faq', refreshCatalogOnWrite, faqRoutes);
+router.use('/blog', refreshCatalogOnWrite, blogRoutes);
+router.use('/incomplete-orders', incompleteOrderRoutes);
+router.use('/payments', paymentRoutes);
+router.use('/dashboard', dashboardRoutes);
+router.use('/inventory', inventoryRoutes);
+router.use('/coupons', couponRoutes);
+router.use('/customers', customerRoutes);
+router.use('/reviews', refreshCatalogOnWrite, reviewAdminRoutes);
+router.use('/banners', refreshCatalogOnWrite, bannerRoutes);
+router.use('/pages', pageRoutes);
+router.use('/analytics', analyticsRoutes);
+
+export default router;

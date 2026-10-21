@@ -1,0 +1,113 @@
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const DEFAULT_TIMEZONE = 'Asia/Dhaka';
+
+/** A mistyped STORE_TIMEZONE would otherwise only blow up later, inside an analytics query. */
+function resolveTimezone(name) {
+  if (!name) return DEFAULT_TIMEZONE;
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: name });
+    return name;
+  } catch {
+    console.warn(`STORE_TIMEZONE "${name}" is not a valid IANA timezone — using ${DEFAULT_TIMEZONE}.`);
+    return DEFAULT_TIMEZONE;
+  }
+}
+
+function required(name, fallback) {
+  const value = process.env[name] ?? fallback;
+  return value;
+}
+
+export const env = {
+  nodeEnv: process.env.NODE_ENV || 'development',
+  port: Number(process.env.PORT) || 5000,
+  clientUrl: required('CLIENT_URL', 'http://localhost:3000'),
+  adminUrl: required('ADMIN_URL', 'http://localhost:5173'),
+  apiBaseUrl: required('API_BASE_URL', `http://localhost:${Number(process.env.PORT) || 5000}`),
+
+  mongodbUri: required('MONGODB_URI', 'mongodb://127.0.0.1:27017/maroon'),
+
+  jwtSecret: required('JWT_SECRET', 'dev_insecure_jwt_secret'),
+  jwtExpiresIn: required('JWT_EXPIRES_IN', '7d'),
+  adminJwtSecret: required('ADMIN_JWT_SECRET', 'dev_insecure_admin_jwt_secret'),
+  adminJwtExpiresIn: required('ADMIN_JWT_EXPIRES_IN', '7d'),
+  cookieDomain: process.env.COOKIE_DOMAIN || undefined,
+
+  // Shared with the storefront (its REVALIDATE_SECRET): lets a Settings save expire the storefront's cached
+  // settings straight away. Development has a fallback like the JWT secrets; in production it must be set on
+  // both sides, otherwise the storefront simply catches up when its own 60-second cache runs out.
+  revalidateSecret: process.env.REVALIDATE_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'dev_insecure_revalidate_secret'),
+
+  appEncryptionKey: process.env.APP_ENCRYPTION_KEY || '',
+
+  // Where "a day" starts and ends for analytics — daily revenue, the 7/30/90-day windows — so a
+  // 2am Dhaka order lands on Dhaka's date rather than the previous UTC day. Any IANA zone name.
+  storeTimezone: resolveTimezone(process.env.STORE_TIMEZONE),
+
+  // Cloudflare R2 (S3-compatible object storage) for uploaded images. R2_PUBLIC_URL is the bucket's public address —
+  // the https://pub-….r2.dev one from the bucket's settings, or your own domain connected to it.
+  r2: {
+    accountId: process.env.R2_ACCOUNT_ID || '',
+    accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
+    bucket: process.env.R2_BUCKET || '',
+    publicUrl: process.env.R2_PUBLIC_URL || '',
+    // Optional. Only for a bucket in the EU or FedRAMP jurisdiction (https://<account id>.eu.r2.cloudflarestorage.com)
+    // or another S3-compatible service; by default https://<account id>.r2.cloudflarestorage.com is used.
+    endpoint: process.env.R2_ENDPOINT || '',
+  },
+
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+    apiKey: process.env.CLOUDINARY_API_KEY || '',
+    apiSecret: process.env.CLOUDINARY_API_SECRET || '',
+  },
+
+  seedAdmin: {
+    email: required('SEED_ADMIN_EMAIL', 'admin@maroon.local'),
+    password: required('SEED_ADMIN_PASSWORD', 'ChangeMe123!'),
+  },
+
+  isProd: process.env.NODE_ENV === 'production',
+
+  // The live sales-demo switch. An infrastructure flag, deliberately not a Settings field: on a sold
+  // copy it is simply absent, so there is nothing in the admin to misconfigure or forget to turn off.
+  isDemo: process.env.DEMO_MODE === 'true',
+  demo: {
+    // Where the "Demo store" banner sends people (the sales page). No URL, no button.
+    ctaUrl: process.env.DEMO_CTA_URL || '',
+    ctaLabel: process.env.DEMO_CTA_LABEL || 'Get this store',
+    // When the demo's visitor data is wiped, in STORE_TIMEZONE.
+    resetCron: process.env.DEMO_RESET_CRON || '0 3 * * *',
+  },
+};
+
+/**
+ * A production server must not run on the development fallbacks: a known JWT secret lets anyone mint
+ * admin sessions, and without an encryption key the payment-gateway credentials in Settings are
+ * stored in plain text. Refusing to start is the safe failure.
+ */
+function assertProductionConfig() {
+  const weak = (value) => !value || value.startsWith('dev_insecure') || value.length < 32;
+  const problems = [];
+
+  if (weak(env.jwtSecret)) problems.push('JWT_SECRET must be set to a random string of at least 32 characters');
+  if (weak(env.adminJwtSecret)) {
+    problems.push('ADMIN_JWT_SECRET must be set to a random string of at least 32 characters');
+  }
+  if (env.jwtSecret === env.adminJwtSecret) problems.push('JWT_SECRET and ADMIN_JWT_SECRET must be different');
+  if (!env.appEncryptionKey) {
+    problems.push(
+      "APP_ENCRYPTION_KEY must be set (generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\")"
+    );
+  }
+
+  if (problems.length) {
+    throw new Error(`Refusing to start in production with an unsafe configuration:\n - ${problems.join('\n - ')}`);
+  }
+}
+
+if (env.isProd) assertProductionConfig();

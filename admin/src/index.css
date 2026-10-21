@@ -1,0 +1,314 @@
+@import "tailwindcss";
+
+/* Drives `dark:` utility variants off our own [data-theme] attribute (set by
+ * store/themeStore.ts, always explicitly "dark" or "light" — see index.html's inline
+ * pre-mount script) instead of Tailwind's default `prefers-color-scheme` media query —
+ * needed for the saturated status hues (emerald/blue/red/amber) below, which aren't part of
+ * the themed `--slate-*` scale and so need an explicit light/dark pair. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Design system: dark-first (Linear/Vercel-style), warm-neutral near-black canvas with a
+ * vivid gold accent, with a real light-mode alternative behind the header's theme toggle
+ * (see components/layout/ThemeToggle.tsx + store/themeStore.ts). Dark is the default for a
+ * new visitor; the choice persists to localStorage and is applied before React mounts
+ * (index.html) so there's no flash of the wrong theme.
+ *
+ * The Tailwind `slate-*` scale is bound to plain `--slate-*` custom properties via
+ * `@theme inline` (the same indirection already used for `--brand-*` below), so every
+ * existing `text-slate-*`/`bg-slate-*`/`border-slate-*` utility in the app repaints when
+ * `--slate-*` changes under `:root[data-theme="light"]` — no per-component rewrite needed.
+ * `white`/`black` are deliberately left alone: `text-white` is used throughout for literal
+ * white text on colored buttons/the sidebar in BOTH themes.
+ *
+ * Card/modal/input surfaces use `slate-100` explicitly instead of `bg-white`, since `white`
+ * isn't themed. Status/accent hues (blue, emerald, red, amber, violet, rose, cyan) stay
+ * Tailwind's real colors at 400/500 steps with low-opacity fills in dark mode so they read
+ * as vivid chips rather than washed-out pastels; light mode uses their 50/700 pastel pair,
+ * which is the Tailwind-idiomatic badge treatment on a white surface.
+ *
+ * The store theme drives this panel. Everything below is the hand-tuned design for the DEFAULT
+ * store theme; at runtime src/lib/theme.ts applies Settings.theme (GET /api/v1/settings/public)
+ * as inline custom properties on <html>, and src/lib/themePalette.ts derives the rest from it:
+ * the --brand-* colours directly, plus the --dk-* and --lt-* sets (neutral scale + form fields),
+ * --brand-ink (the brand colour readable on the current surface) and --brand-on-primary/-accent
+ * (readable text on those colours). The `var(--dk-50, #0d0b0a)` form means "use the derived
+ * value if the theme produced one, otherwise this hand-tuned default" — so changing the
+ * storefront's colours repaints the admin, and an untouched theme looks exactly as designed.
+ * Keep the defaults in sync with ../../frontend/src/app/globals.css (the source of truth —
+ * docs/DESIGN_TOKENS.md still describes a gradient button and is out of date).
+ */
+:root {
+  color-scheme: dark;
+
+  /* Dark theme (default). Each elevation step is a deliberately large, unmistakable jump —
+   * page (50) -> card (100) -> hover/border (200) -> strong border (300) should each read as
+   * a clearly different band at a glance, never blend into the one below it. */
+  --slate-50: var(--dk-50, #0d0b0a);
+  --slate-100: var(--dk-100, #2b231b);
+  --slate-200: var(--dk-200, #3e3327);
+  --slate-300: var(--dk-300, #544433);
+  --slate-400: var(--dk-400, #9c8f82);
+  --slate-500: var(--dk-500, #b7aa9c);
+  --slate-600: var(--dk-600, #cfc3b5);
+  --slate-700: var(--dk-700, #e2d8cb);
+  --slate-800: var(--dk-800, #efe8dd);
+  --slate-900: var(--dk-900, #f7f2ea);
+
+  /* Form controls get their OWN fill + border (not a slate step): inputs mostly sit inside
+   * cards/modals (slate-100), so reusing a slate step made them identical to their surroundings.
+   * Dark = a recessed well, clearly darker than the card; light = a slightly grayer field. */
+  --field-bg: var(--dk-field-bg, #110d0b);
+  --field-border: var(--dk-field-border, #473524);
+
+  /* The brand colour that is actually readable on this theme's surfaces — used for links, the
+   * chart line and progress bars. Dark primary (a deep brown) vanishes on a dark card, so dark
+   * mode uses the accent; light mode uses the primary. Derived per theme in themePalette.ts. */
+  --brand-ink: var(--brand-ink-dk, #d4932f);
+  --brand-on-primary: #ffffff;
+  --brand-on-accent: #1a1310;
+
+  --brand-bg-dark: #0d0b0a;
+  --brand-surface-dark: #2b231b;
+  --brand-primary: #6b3410;
+  --brand-primary-dark: #4a230a;
+  --brand-accent: #d4932f;
+  --brand-gradient-from: #6b3410;
+  --brand-gradient-to: #d4932f;
+  --brand-card: #2b231b;
+  --brand-text-on-dark: #f7f2ea;
+  --brand-text-muted: #9c8f82;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --slate-50: var(--lt-50, #f6f3f0);
+  --slate-100: var(--lt-100, #ffffff);
+  --slate-200: var(--lt-200, #e7e0d8);
+  --slate-300: var(--lt-300, #d3c8ba);
+  --slate-400: var(--lt-400, #7d7064);
+  --slate-500: var(--lt-500, #5f5348);
+  --slate-600: var(--lt-600, #443a31);
+  --slate-700: var(--lt-700, #30281f);
+  --slate-800: var(--lt-800, #1d1712);
+  --slate-900: var(--lt-900, #110d0a);
+
+  --field-bg: var(--lt-field-bg, #f1ede8);
+  --field-border: var(--lt-field-border, #d3c8ba);
+
+  --brand-ink: var(--brand-ink-lt, #6b3410);
+
+  --brand-bg-dark: #1a1310;
+  --brand-surface-dark: #241a15;
+  --brand-card: #ffffff;
+  --brand-text-on-dark: #f5efe9;
+  --brand-text-muted: #a89a8f;
+}
+
+@theme inline {
+  --color-slate-50: var(--slate-50);
+  --color-slate-100: var(--slate-100);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-500: var(--slate-500);
+  --color-slate-600: var(--slate-600);
+  --color-slate-700: var(--slate-700);
+  --color-slate-800: var(--slate-800);
+  --color-slate-900: var(--slate-900);
+
+  --color-field: var(--field-bg);
+  --color-field-border: var(--field-border);
+
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-on-primary: var(--brand-on-primary);
+  --color-brand-on-accent: var(--brand-on-accent);
+
+  --color-brand-bg-dark: var(--brand-bg-dark);
+  --color-brand-surface-dark: var(--brand-surface-dark);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-primary-dark: var(--brand-primary-dark);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-card: var(--brand-card);
+  --color-brand-text-on-dark: var(--brand-text-on-dark);
+  --color-brand-text-muted: var(--brand-text-muted);
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+  font-family: var(--font-sans);
+}
+
+/* Solid brand fill, identical to the storefront (frontend/src/app/globals.css) — the class
+ * name is kept because it's used across many components, but it follows the store theme's
+ * `primary` color (Settings.theme.primary via lib/theme.ts), not a deep-to-light gradient. */
+.brand-gradient {
+  background-color: var(--brand-primary);
+}
+
+/* Scrollbars follow the theme — the browser default is a bright grey that's jarring on dark. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--slate-300) transparent;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+/* Dropdown lists. A plain <select> hands its list to the operating system, which draws it in its own colours and
+ * decides where it goes — in a short window it jumps to the top of the screen, over the form. `base-select` keeps the
+ * list in the page: themed, directly under the field (above it only when there is more room there), no taller than
+ * the space left, with its own scrollbar. Browsers without it fall back to the native list and the plain field. */
+select {
+  appearance: none;
+}
+
+@supports (appearance: base-select) {
+  select,
+  select::picker(select) {
+    appearance: base-select;
+  }
+
+  /* The text of the chosen option sits in the middle of the field, not at the top of it. */
+  select {
+    align-items: center;
+  }
+
+  /* The field draws its own chevron (components/ui/Select.tsx). */
+  select::picker-icon {
+    display: none;
+  }
+
+  select::picker(select) {
+    box-sizing: border-box;
+    margin-block: 0.25rem;
+    padding: 0.25rem;
+    border: 1px solid var(--field-border);
+    border-radius: 0.5rem;
+    background: var(--slate-100);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
+    scrollbar-width: thin;
+    scrollbar-color: var(--slate-300) transparent;
+  }
+
+  select option {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--slate-800);
+    cursor: pointer;
+  }
+
+  select option:hover,
+  select option:focus-visible {
+    background: var(--slate-200);
+  }
+
+  select option:checked {
+    background: var(--slate-200);
+    font-weight: 600;
+  }
+
+  select option::checkmark {
+    display: none;
+  }
+}
+
+/* Loading placeholders: a sweeping highlight reads as "loading" far more clearly than a faint
+ * pulse on a near-identical surface. Respects reduced-motion. */
+.skeleton {
+  background: linear-gradient(90deg, var(--slate-200) 25%, var(--slate-300) 37%, var(--slate-200) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* The page-content rich text editor (components/ui/RichTextEditor.tsx). The look mirrors how the text is shown
+   on the storefront, scaled for an input. */
+.rich-editor .ProseMirror {
+  min-height: 18rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--color-slate-800);
+  outline: none;
+}
+.rich-editor .ProseMirror > * + * {
+  margin-top: 0.85rem;
+}
+.rich-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--color-slate-400);
+  pointer-events: none;
+}
+.rich-editor .ProseMirror h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.rich-editor .ProseMirror h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.rich-editor .ProseMirror h4 {
+  font-weight: 600;
+}
+.rich-editor .ProseMirror ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.rich-editor .ProseMirror ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.rich-editor .ProseMirror li > p {
+  margin-top: 0;
+}
+.rich-editor .ProseMirror a {
+  color: var(--brand-ink, var(--color-slate-900));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rich-editor .ProseMirror blockquote {
+  border-left: 3px solid var(--color-slate-400);
+  padding-left: 0.9rem;
+  font-style: italic;
+  color: var(--color-slate-500);
+}
+.rich-editor .ProseMirror hr {
+  border: 0;
+  border-top: 1px solid var(--color-slate-300);
+}
+.rich-editor .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+.rich-editor .ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--brand-ink, var(--color-slate-900));
+}
+.rich-editor .ProseMirror code {
+  border-radius: 0.25rem;
+  background: var(--color-slate-200);
+  padding: 0.1rem 0.3rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+}

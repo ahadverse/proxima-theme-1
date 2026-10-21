@@ -1,0 +1,17 @@
+node_modules/
+.next/
+dist/
+build/
+docs/
+docs
+design sample/
+.env
+.claude
+.env.local
+.env.*.local
+*.log
+.DS_Store
+Thumbs.db
+backend/uploads/
+.vscode/
+.idea/
