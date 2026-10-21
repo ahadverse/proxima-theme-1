@@ -4,7 +4,6 @@ import type { SalesPoint } from '@/types/analytics';
 
 export type SalesMetric = 'revenue' | 'orders';
 
-// Every colour is a CSS variable, so the chart follows the light/dark toggle and the store's theme
 // (the line is --brand-ink: the brand colour that is readable on the current surface). One series,
 // so no legend — the card title and the metric switch say what is plotted.
 const INK = 'var(--brand-ink)';

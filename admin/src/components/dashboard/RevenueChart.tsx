@@ -7,7 +7,6 @@ interface ChartTooltipProps {
   label?: string;
 }
 
-// Every colour here is a CSS variable, so the chart follows both the light/dark toggle and the
 // store's colour theme (the line uses --brand-ink: the brand colour that is readable on the
 // current surface). Single series, so no legend box — the card title says what's plotted.
 const INK = 'var(--brand-ink)';

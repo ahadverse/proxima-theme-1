@@ -13,7 +13,6 @@ const toneClasses: Record<Tone, string> = {
   cyan: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-500/15 dark:text-cyan-400',
 };
 
-/** A thin trend line under the value — no axes, it only shows the shape of the period. */
 function Sparkline({ values }: { values: number[] }) {
   if (values.length < 2) return null;
   const max = Math.max(...values, 1);
