@@ -1,5 +1,5 @@
 import type { TopProduct } from '@/types/dashboard';
-
+// hi 
 export function TopProducts({ products }: { products: TopProduct[] }) {
   if (products.length === 0) {
     return <p className="px-5 py-10 text-center text-sm text-slate-400">No sales yet.</p>;
