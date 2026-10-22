@@ -72,7 +72,9 @@ export default async function BrandPage({ params, searchParams }: PageProps<'/br
           No {brand.name} products yet — check back soon.
         </div>
       ) : (
-        <ProductGrid>
+        // Keyed by the query, so a new sort / page replaces the grid instead of shuffling the cards already on screen
+        // (which the browser counts as the whole page jumping).
+        <ProductGrid key={query.toString()}>
           {products.map((p, i) => (
             <ProductCard key={p.id} product={p} priority={i < 4} />
           ))}

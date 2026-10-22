@@ -8,8 +8,25 @@ const extraImageHosts = (process.env.IMAGE_HOSTNAMES ?? "")
   .filter(Boolean)
   .map((hostname) => ({ protocol: "https" as const, hostname }));
 
+// What every page response tells the browser. A full script policy (CSP script-src) is not set: the page loads the Meta and
+// Google tags that stores configure in Settings, and Next's own inline bootstrap, so a strict one would need per-request
+// nonces — which would make every page dynamic. These directives close the holes that need no such trade-off: nobody can
+// frame the store (clickjacking on login / checkout), inject a <base>, or embed plugins.
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+];
+
 const nextConfig: NextConfig = {
   /* config options here */
+  poweredByHeader: false,
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
   // Keeps all project docs consolidated under docs/ — stops `next dev` from
   // writing frontend/AGENTS.md on every run.
   agentRules: false,

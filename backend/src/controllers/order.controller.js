@@ -52,7 +52,7 @@ export const adminGetOne = asyncHandler(async (req, res) => {
 });
 
 export const adminUpdateStatus = asyncHandler(async (req, res) => {
-  const order = await orderService.updateOrderStatus(req.params.id, req.body.status, req.body.note);
+  const order = await orderService.updateOrderStatus(req.params.id, req.body.status, req.body.note, req.admin._id);
   sendSuccess(res, { message: 'Order status updated', data: order });
 });
 

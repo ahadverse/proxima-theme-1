@@ -3,31 +3,35 @@ import { Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import Login from '@/pages/Login';
-import Dashboard from '@/pages/Dashboard';
-import Categories from '@/pages/Categories';
-import Brands from '@/pages/Brands';
-import Attributes from '@/pages/Attributes';
-import ProductList from '@/pages/Products/ProductList';
-import ProductForm from '@/pages/Products/ProductForm';
-import Inventory from '@/pages/Inventory';
-import Orders from '@/pages/Orders';
-import IncompleteOrders from '@/pages/IncompleteOrders';
-import Customers from '@/pages/Customers';
-import Reviews from '@/pages/Reviews';
-import Coupons from '@/pages/Coupons';
-import Settings from '@/pages/Settings';
-import Staff from '@/pages/Staff';
-import Banners from '@/pages/Banners';
-import Analytics from '@/pages/Analytics';
-import BlogList from '@/pages/Blog/BlogList';
-import BlogForm from '@/pages/Blog/BlogForm';
-import Faq from '@/pages/Faq';
-import NotFound from '@/pages/NotFound';
-import StaticPages from '@/pages/StaticPages';
-import StaticPageForm from '@/pages/StaticPages/StaticPageForm';
+import { lazyPage } from '@/lib/lazyPage';
 import { SuperAdminRoute } from '@/routes/SuperAdminRoute';
 import { usePublicSettings } from '@/api/settings';
 import { applyTheme } from '@/lib/theme';
+
+// Every page after sign-in is its own file, downloaded the first time it is opened. Before, the sign-in screen carried the
+// whole admin — every page, the chart library, the rich text editor, drag and drop — as one 1.8 MB file.
+const Dashboard = lazyPage(() => import('@/pages/Dashboard'));
+const Categories = lazyPage(() => import('@/pages/Categories'));
+const Brands = lazyPage(() => import('@/pages/Brands'));
+const Attributes = lazyPage(() => import('@/pages/Attributes'));
+const ProductList = lazyPage(() => import('@/pages/Products/ProductList'));
+const ProductForm = lazyPage(() => import('@/pages/Products/ProductForm'));
+const Inventory = lazyPage(() => import('@/pages/Inventory'));
+const Orders = lazyPage(() => import('@/pages/Orders'));
+const IncompleteOrders = lazyPage(() => import('@/pages/IncompleteOrders'));
+const Customers = lazyPage(() => import('@/pages/Customers'));
+const Reviews = lazyPage(() => import('@/pages/Reviews'));
+const Coupons = lazyPage(() => import('@/pages/Coupons'));
+const Settings = lazyPage(() => import('@/pages/Settings'));
+const Staff = lazyPage(() => import('@/pages/Staff'));
+const Banners = lazyPage(() => import('@/pages/Banners'));
+const Analytics = lazyPage(() => import('@/pages/Analytics'));
+const BlogList = lazyPage(() => import('@/pages/Blog/BlogList'));
+const BlogForm = lazyPage(() => import('@/pages/Blog/BlogForm'));
+const Faq = lazyPage(() => import('@/pages/Faq'));
+const NotFound = lazyPage(() => import('@/pages/NotFound'));
+const StaticPages = lazyPage(() => import('@/pages/StaticPages'));
+const StaticPageForm = lazyPage(() => import('@/pages/StaticPages/StaticPageForm'));
 
 export default function App() {
   // The admin follows the store's colour theme: whenever Settings.theme changes (first load,

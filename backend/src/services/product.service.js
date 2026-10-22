@@ -18,6 +18,10 @@ const PUBLIC_POPULATE = [
   { path: 'variants.attributes.attribute', select: 'name slug type' },
 ];
 
+// What the storefront's product reads fill in. The shop never shows a product's `attributesUsed` (only the admin's product
+// form does, through the admin endpoints), and every populated path is one more database round trip on every page view.
+const STOREFRONT_POPULATE = PUBLIC_POPULATE.filter((p) => p.path !== 'attributesUsed');
+
 async function resolveCategoryAndDescendants(categorySlug) {
   const category = await Category.findOne({ slug: categorySlug });
   if (!category) return [];
@@ -62,7 +66,7 @@ export async function listProducts(query) {
   const skip = (page - 1) * limit;
 
   const [items, total] = await Promise.all([
-    Product.find(filter).sort(sortBy).skip(skip).limit(limit).select(PUBLIC_SELECT).populate(PUBLIC_POPULATE),
+    Product.find(filter).sort(sortBy).skip(skip).limit(limit).select(PUBLIC_SELECT).populate(STOREFRONT_POPULATE),
     Product.countDocuments(filter),
   ]);
 
@@ -121,7 +125,7 @@ export async function getFeaturedList(type, { limit = 10, sort = 'newest' } = {}
     filter.$or = [{ flashSaleEndsAt: null }, { flashSaleEndsAt: { $gt: new Date() } }];
   }
   const find = (order, count) =>
-    Product.find(filter).sort(order).limit(count).select(PUBLIC_SELECT).populate(PUBLIC_POPULATE);
+    Product.find(filter).sort(order).limit(count).select(PUBLIC_SELECT).populate(STOREFRONT_POPULATE);
 
   if (sort === 'value') {
     // Ranked in memory: a shelf is a curated handful of products, and the ratio isn't a stored field.
@@ -132,7 +136,7 @@ export async function getFeaturedList(type, { limit = 10, sort = 'newest' } = {}
 }
 
 export async function getProductBySlug(slug) {
-  const product = await Product.findOne({ slug, status: 'active' }).select(PUBLIC_SELECT).populate(PUBLIC_POPULATE);
+  const product = await Product.findOne({ slug, status: 'active' }).select(PUBLIC_SELECT).populate(STOREFRONT_POPULATE);
   if (!product) throw ApiError.notFound('Product not found');
 
   // Views are counted when the browser reports them (POST /analytics/track), not here: this is
@@ -149,7 +153,7 @@ export async function getRelatedProducts(product, limit = 4) {
     .sort({ purchaseCount: -1, createdAt: -1 })
     .limit(limit)
     .select(PUBLIC_SELECT)
-    .populate(PUBLIC_POPULATE);
+    .populate(STOREFRONT_POPULATE);
 }
 
 /**

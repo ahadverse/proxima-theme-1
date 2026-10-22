@@ -235,7 +235,7 @@ function PasswordCard() {
         </Labelled>
         <Labelled label="New password">
           {(id) => (
-            <input id={id} type="password" required minLength={6} autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} placeholder="At least 6 characters" className={inputClass} />
+            <input id={id} type="password" required minLength={8} autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} placeholder="At least 8 characters" className={inputClass} />
           )}
         </Labelled>
       </div>

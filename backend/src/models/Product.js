@@ -100,6 +100,12 @@ productSchema.index({ brand: 1, status: 1 });
 productSchema.index({ isFlashSale: 1 });
 productSchema.index({ isTrending: 1 });
 productSchema.index({ isNewArrival: 1 });
+productSchema.index({ isBestSeller: 1 });
+// The storefront's listings: active products in each sort order.
+productSchema.index({ status: 1, createdAt: -1 });
+productSchema.index({ status: 1, basePrice: 1 });
+productSchema.index({ status: 1, purchaseCount: -1 });
+productSchema.index({ status: 1, ratingsAverage: -1 });
 
 productSchema.methods.recomputeStockStatus = function recomputeStockStatus() {
   const totalStock =

@@ -35,11 +35,21 @@ export async function getAdminSettings() {
   return obj;
 }
 
+// Every storefront page, and every browser that opens the site, asks for these; a few seconds of memory saves a database
+// round trip on each. Anything that writes the Settings document calls invalidatePublicSettings().
+const PUBLIC_TTL_MS = 15_000;
+let publicCache = null;
+
+export function invalidatePublicSettings() {
+  publicCache = null;
+}
+
 /** Public, unauthenticated settings — only what the storefront needs, no credentials at all. */
 export async function getPublicSettings() {
+  if (publicCache && Date.now() < publicCache.expires) return publicCache.value;
   const doc = await getSettingsDoc();
 
-  return {
+  const value = {
     storeName: doc.storeName,
     logo: doc.logo,
     hotlinePhone: doc.hotlinePhone,
@@ -63,6 +73,8 @@ export async function getPublicSettings() {
     isDemo: env.isDemo,
     ...(env.isDemo ? { demoCta: { url: env.demo.ctaUrl, label: env.demo.ctaLabel } } : {}),
   };
+  publicCache = { value, expires: Date.now() + PUBLIC_TTL_MS };
+  return value;
 }
 
 /**
@@ -95,6 +107,7 @@ export async function updateSettings(patch) {
   merge(current, patch);
   Object.assign(doc, current);
   await doc.save();
+  invalidatePublicSettings();
 
   return getAdminSettings();
 }

@@ -8,6 +8,8 @@ import { DeliveryAreaRadio } from './DeliveryAreaRadio';
 import { PaymentMethodRadio } from './PaymentMethodRadio';
 import { OrderSummary } from './OrderSummary';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { useHydrated } from '@/hooks/useHydrated';
 import { apiMutate } from '@/lib/api';
 import { checkCoupon, type AppliedCoupon } from '@/lib/coupon';
 import { isValidPhone } from '@/lib/phone';
@@ -43,6 +45,7 @@ export function CheckoutForm({ settings }: { settings: PublicSettings }) {
 
 function CheckoutFormBody({ settings, user }: { settings: PublicSettings; user: CustomerUser | null }) {
   const router = useRouter();
+  const hydrated = useHydrated();
   const lines = useCartStore((s) => s.lines);
   const clearCart = useCartStore((s) => s.clear);
 
@@ -123,6 +126,22 @@ function CheckoutFormBody({ settings, user }: { settings: PublicSettings; user: 
     return null;
   }
 
+  // The cart lives in the browser, so until the page is live there's no telling whether it's empty: the server's page
+  // would say "Your cart is empty" to every shopper with items, and then jump to the form. Hold the form's space instead.
+  if (!hydrated) {
+    return (
+      <div role="status" aria-busy="true" className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start">
+        {/* Real words in the placeholder, so the page has something to show (and to measure as its first paint) straight
+            from the server's HTML rather than only once the form has hydrated. */}
+        <div className="h-[760px] rounded-xl bg-white/10 p-8">
+          <h1 className="text-xl font-bold text-white">Checkout</h1>
+          <p className="mt-2 text-sm text-slate-300">Getting your cart ready…</p>
+        </div>
+        <Skeleton className="h-[420px] rounded-xl bg-white/10" />
+      </div>
+    );
+  }
+
   if (placed) {
     return (
       <div role="status" className="rounded-xl border border-dashed border-slate-200 py-20 text-center">
@@ -139,7 +158,8 @@ function CheckoutFormBody({ settings, user }: { settings: PublicSettings; user: 
 
   if (lines.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-200 py-20 text-center">
+      // Same minimum height as the form's skeleton above, so an empty cart doesn't make the footer jump up.
+      <div className="flex min-h-[760px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 py-20 text-center">
         <h1 className="mb-1 text-lg font-bold text-white">Checkout</h1>
         <p className="mb-4 text-sm text-slate-400">Your cart is empty — add a product before checking out.</p>
         <Button type="button" onClick={() => router.push('/products')}>

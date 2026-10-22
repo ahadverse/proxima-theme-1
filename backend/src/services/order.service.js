@@ -15,6 +15,7 @@ import * as stockService from './stock.service.js';
 import { logger } from '../utils/logger.js';
 import { escapeRegex } from '../utils/slugify.js';
 import { phoneLookupPattern } from '../utils/phone.js';
+import { withLock } from '../utils/keyedLock.js';
 
 /**
  * Prices the requested items from the catalogue (never from the request) and checks they can be
@@ -60,7 +61,9 @@ async function priceItems(requestedItems) {
       title: product.title,
       variantSku: variant ? variant.sku : null,
       variantLabel,
-      image: requested.image || variant?.images?.[0]?.url || product.images?.[0]?.url,
+      // From the catalogue, like the price and title: an address sent by the browser would be stored on the order and
+      // then loaded by whoever opens it in the admin panel.
+      image: variant?.images?.[0]?.url || product.images?.[0]?.url,
       price: variant ? variant.price : product.basePrice,
       quantity: requested.quantity,
     });
@@ -341,6 +344,29 @@ const RELEASES_STOCK = new Set(['cancelled', 'returned']);
 
 /** Gives an order's stock back — it was cancelled or returned — and takes it off the sales counters. */
 async function releaseOrderStock(order, reason) {
+  // Claimed in one atomic step, so even two servers handling the same order at the same moment can't both give its
+  // stock back (read-then-write let six parallel "cancel" clicks restock the order six times).
+  const claimed = await Order.findOneAndUpdate(
+    { _id: order._id, stockReleased: { $ne: true } },
+    { $set: { stockReleased: true } }
+  );
+  order.stockReleased = true;
+  if (!claimed) return;
+
+  const done = [];
+  try {
+    await restockLines(order, reason, done);
+  } catch (err) {
+    // If nothing went back yet, let the next attempt start clean.
+    if (done.length === 0) {
+      await Order.updateOne({ _id: order._id }, { $set: { stockReleased: false } });
+      order.stockReleased = false;
+    }
+    throw err;
+  }
+}
+
+async function restockLines(order, reason, done) {
   for (const item of order.items) {
     const back = await stockService.putBackStock({
       productId: item.product,
@@ -361,8 +387,8 @@ async function releaseOrderStock(order, reason) {
       { _id: item.product },
       { $inc: { purchaseCount: -item.quantity, revenueTotal: -(item.price * item.quantity) } }
     );
+    done.push(item);
   }
-  order.stockReleased = true;
 }
 
 /**
@@ -370,6 +396,22 @@ async function releaseOrderStock(order, reason) {
  * any line can't be covered anymore nothing is taken and the status change is refused.
  */
 async function reinstateOrderStock(order) {
+  // Claimed atomically, like releaseOrderStock: the stock is taken out again exactly once.
+  const claimed = await Order.findOneAndUpdate({ _id: order._id, stockReleased: true }, { $set: { stockReleased: false } });
+  order.stockReleased = false;
+  if (!claimed) return;
+
+  try {
+    await takeOrderStock(order);
+  } catch (err) {
+    // Nothing was taken (a short line undoes the rest), so the order still holds no stock.
+    await Order.updateOne({ _id: order._id }, { $set: { stockReleased: true } });
+    order.stockReleased = true;
+    throw err;
+  }
+}
+
+async function takeOrderStock(order) {
   const taken = [];
   try {
     for (const item of order.items) {
@@ -410,10 +452,18 @@ async function reinstateOrderStock(order) {
       { $inc: { purchaseCount: item.quantity, revenueTotal: item.price * item.quantity } }
     );
   }
-  order.stockReleased = false;
 }
 
-export async function updateOrderStatus(id, status, note) {
+/**
+ * Moves an order to a new status, one change at a time per order: a double-click (or two staff acting at once) is
+ * handled in turn, so the second request sees the first one's result instead of repeating its side effects (stock, the
+ * courier booking, the status history).
+ */
+export function updateOrderStatus(id, status, note, adminId) {
+  return withLock(`order:${id}`, () => applyOrderStatus(id, status, note, adminId));
+}
+
+async function applyOrderStatus(id, status, note, adminId) {
   const order = await Order.findById(id);
   if (!order) throw ApiError.notFound('Order not found');
 
@@ -429,7 +479,7 @@ export async function updateOrderStatus(id, status, note) {
   else if (!RELEASES_STOCK.has(status) && order.stockReleased) await reinstateOrderStock(order);
 
   order.orderStatus = status;
-  order.statusHistory.push({ status, note });
+  order.statusHistory.push({ status, note, changedBy: adminId });
 
   // Auto-book the courier consignment the first time an order moves into processing — piggybacks
   // on this existing admin-protected route so a future admin "Orders" UI gets it for free.

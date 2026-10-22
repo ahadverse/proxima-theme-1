@@ -5,6 +5,7 @@ import { sendSuccess } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
 import { isBlankHtml, sanitizePageHtml } from '../utils/sanitizeHtml.js';
 import { refreshStorefront } from '../services/storefront.service.js';
+import { invalidatePublicSettings } from '../services/settings.service.js';
 
 // Lets the admin lock the address on pages the storefront has its own route for.
 const present = (page) => ({ ...page.toObject(), isSystem: SYSTEM_PAGE_SLUGS.includes(page.slug) });
@@ -22,7 +23,10 @@ function cleanContent(content, format) {
 export const getOne = asyncHandler(async (req, res) => {
   const page = await Page.findOne({ slug: req.params.slug }).select('slug title content contentFormat updatedAt');
   if (!page) throw ApiError.notFound('Page not found');
-  sendSuccess(res, { data: page });
+  const data = page.toObject();
+  // Cleaned on the way out as well, so html text stored before it was cleaned on every write can't reach a visitor.
+  if (data.contentFormat === 'html') data.content = sanitizePageHtml(data.content);
+  sendSuccess(res, { data });
 });
 
 // ---------- Admin
@@ -55,7 +59,10 @@ export const update = asyncHandler(async (req, res) => {
   }
 
   const body = { ...req.body };
-  const content = cleanContent(body.content, body.contentFormat ?? page.contentFormat);
+  // The text that ends up stored is what was sent or — when only the format changes — what is already there; an html
+  // page is cleaned either way.
+  const format = body.contentFormat ?? page.contentFormat;
+  const content = cleanContent(body.content ?? (format === 'html' ? page.content : undefined), format);
   if (content !== undefined) body.content = content;
 
   // A new address changes where the footer's links to this page must point.
@@ -71,6 +78,7 @@ export const update = asyncHandler(async (req, res) => {
     );
   }
 
+  invalidatePublicSettings();
   await refreshStorefront(['pages', 'settings']);
   sendSuccess(res, { message: 'Page updated', data: present(page) });
 });
@@ -87,6 +95,7 @@ export const remove = asyncHandler(async (req, res) => {
     await Settings.updateOne({ key: 'main' }, { $pull: { 'footer.sections.$[].links': { href: pageHref(page.slug) } } });
   }
 
+  invalidatePublicSettings();
   await refreshStorefront(['pages', 'settings']);
   sendSuccess(res, {
     message: SYSTEM_PAGE_SLUGS.includes(page.slug) ? 'Page reset to its default text' : 'Page deleted',

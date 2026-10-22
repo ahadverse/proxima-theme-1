@@ -18,5 +18,7 @@ const inventoryLogSchema = new mongoose.Schema(
 );
 
 inventoryLogSchema.index({ product: 1, createdAt: -1 });
+// The store-wide activity log, newest first.
+inventoryLogSchema.index({ createdAt: -1 });
 
 export const InventoryLog = mongoose.model('InventoryLog', inventoryLogSchema);

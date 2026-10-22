@@ -18,6 +18,8 @@ const statusHistorySchema = new mongoose.Schema(
     status: { type: String, required: true },
     note: { type: String },
     changedAt: { type: Date, default: Date.now },
+    // Which admin made the change (empty for the system's own entries, e.g. "Order placed").
+    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
   },
   { _id: false }
 );
@@ -106,5 +108,7 @@ orderSchema.index({ customer: 1, createdAt: -1 });
 orderSchema.index({ 'guestInfo.phone': 1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ createdAt: -1 });
+// A payment gateway's callback finds its order by the reference it started the payment with.
+orderSchema.index({ 'paymentDetails.transactionId': 1 }, { sparse: true });
 
 export const Order = mongoose.model('Order', orderSchema);

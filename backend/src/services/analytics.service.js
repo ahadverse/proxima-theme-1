@@ -3,6 +3,7 @@ import { Category } from '../models/Category.js';
 import { Order } from '../models/Order.js';
 import { Product } from '../models/Product.js';
 import { env } from '../config/env.js';
+import { logger } from '../utils/logger.js';
 import { addDays, dayKey, recentDayKeys, startOfDay } from '../utils/timezone.js';
 
 const TZ = env.storeTimezone;
@@ -52,7 +53,10 @@ export async function trackEvent({ type, productId, variantSku, quantity = 1, se
   });
 
   // Lifetime counters on the product, kept in step with the events.
-  Product.updateOne({ _id: product._id }, { $inc: isView ? { viewCount: 1 } : { addToCartCount: 1 } }).exec();
+  // Fire-and-forget, but a failure is logged: an unhandled rejection here would take the whole server down.
+  Product.updateOne({ _id: product._id }, { $inc: isView ? { viewCount: 1 } : { addToCartCount: 1 } })
+    .exec()
+    .catch((err) => logger.warn('Product counter update failed:', err.message));
 
   return { recorded: true };
 }

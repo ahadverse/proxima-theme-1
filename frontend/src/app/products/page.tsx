@@ -109,7 +109,9 @@ export default async function ProductsPage({ searchParams }: PageProps<'/product
               )}
             </div>
           ) : (
-            <ProductGrid>
+            // Keyed by the query, so a new sort / filter / page replaces the grid instead of shuffling the cards already on
+            // screen (which the browser counts as the whole page jumping).
+            <ProductGrid key={query.toString()}>
               {products.map((p, i) => (
                 <ProductCard key={p.id} product={p} priority={i < 4} />
               ))}

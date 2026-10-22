@@ -36,6 +36,13 @@
   --font-sans: var(--font-inter);
 }
 
+/* Always leave room for the scrollbar. Otherwise the page is a scrollbar's width wider while it is still short (its
+   content is streaming in) and narrower once it grows: the header's category row re-wraps onto a second line and the
+   whole page drops with it. */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background: var(--brand-page-bg);
   color: var(--brand-text-on-dark);

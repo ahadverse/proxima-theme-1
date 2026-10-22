@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { strongPassword } from './auth.validators.js';
 
 export const updateProfileSchema = z.object({
   name: z.string().trim().min(2, 'Name is too short').max(100).optional(),
@@ -16,6 +17,6 @@ export const addressSchema = z.object({
 export const updateAddressSchema = addressSchema.partial();
 
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'Enter your current password'),
-  newPassword: z.string().min(6, 'Password must be at least 6 characters').max(100),
+  currentPassword: z.string().min(1, 'Enter your current password').max(200),
+  newPassword: strongPassword(8),
 });

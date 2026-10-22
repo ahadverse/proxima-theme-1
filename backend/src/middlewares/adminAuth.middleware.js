@@ -1,4 +1,4 @@
-import { verifyAdminToken } from '../utils/generateToken.js';
+import { verifyAdminToken, isTokenRevoked } from '../utils/generateToken.js';
 import { ApiError } from '../utils/ApiError.js';
 import { Admin } from '../models/Admin.js';
 import { asyncHandler } from './asyncHandler.js';
@@ -15,8 +15,13 @@ export const requireAdminAuth = asyncHandler(async (req, res, next) => {
     throw ApiError.unauthorized('Session expired, please log in again');
   }
 
-  const admin = await Admin.findById(payload.sub);
+  // The account and the "signed out" list are independent lookups.
+  const [admin, revoked] = await Promise.all([Admin.findById(payload.sub), isTokenRevoked(payload)]);
   if (!admin || !admin.isActive) throw ApiError.unauthorized('Admin account not found or inactive');
+  // Signed out of, or the password changed / the account was switched off since this token was issued.
+  if (revoked || (payload.tv ?? 0) !== (admin.tokenVersion ?? 0)) {
+    throw ApiError.unauthorized('Session expired, please log in again');
+  }
 
   req.admin = admin;
   next();

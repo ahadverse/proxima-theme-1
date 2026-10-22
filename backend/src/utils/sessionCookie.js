@@ -18,7 +18,7 @@ export function ensureSessionId(req, res) {
   res.cookie(SESSION_COOKIE, sessionId, {
     httpOnly: true,
     secure: env.isProd,
-    sameSite: env.isProd ? 'none' : 'lax',
+    sameSite: env.cookieSameSite,
     domain: env.cookieDomain,
     maxAge: 30 * 24 * 60 * 60 * 1000,
     path: '/',

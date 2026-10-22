@@ -27,5 +27,6 @@ const incompleteOrderSchema = new mongoose.Schema(
 );
 
 incompleteOrderSchema.index({ phone: 1, createdAt: -1 });
+incompleteOrderSchema.index({ status: 1, createdAt: -1 });
 
 export const IncompleteOrder = mongoose.model('IncompleteOrder', incompleteOrderSchema);

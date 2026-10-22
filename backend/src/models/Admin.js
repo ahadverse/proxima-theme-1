@@ -8,6 +8,8 @@ const adminSchema = new mongoose.Schema(
     passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: ['super-admin', 'staff'], default: 'staff' },
     isActive: { type: Boolean, default: true },
+    // Raised when the password changes or the account is switched off: every login token issued before that stops working.
+    tokenVersion: { type: Number, default: 0 },
     lastLoginAt: { type: Date },
   },
   { timestamps: true }

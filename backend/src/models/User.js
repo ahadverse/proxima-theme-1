@@ -21,6 +21,8 @@ const userSchema = new mongoose.Schema(
     wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
     isVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
+    // Raised when the password changes: every login token issued before that stops working.
+    tokenVersion: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

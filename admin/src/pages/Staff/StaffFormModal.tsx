@@ -18,7 +18,7 @@ const schema = z.object({
   name: z.string().trim().min(2, 'Name is too short'),
   email: z.string().trim().toLowerCase().pipe(z.email('Enter a valid email address')),
   // Required when creating (checked in onSubmit), optional when editing.
-  password: z.string().refine((v) => !v || v.length >= 6, 'Password must be at least 6 characters'),
+  password: z.string().refine((v) => !v || v.length >= 10, 'Password must be at least 10 characters'),
   role: z.enum(['super-admin', 'staff']),
   isActive: z.boolean(),
 });
@@ -131,7 +131,7 @@ export function StaffFormModal({ isOpen, onClose, member }: StaffFormModalProps)
         <FormField
           label={isEdit ? 'New password' : 'Password'}
           error={errors.password?.message}
-          hint={isEdit ? 'Leave blank to keep the current password' : 'At least 6 characters'}
+          hint={isEdit ? 'Leave blank to keep the current password' : 'At least 10 characters'}
         >
           <Input type="password" autoComplete="new-password" {...register('password')} />
         </FormField>

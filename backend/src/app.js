@@ -9,10 +9,12 @@ import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
 import apiRouter from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middlewares/errorHandler.middleware.js';
+import { requireTrustedOrigin } from './middlewares/csrf.middleware.js';
+import { isStorefrontServer } from './middlewares/trustedStorefront.middleware.js';
 
 export const app = express();
 
-app.set('trust proxy', 1);
+app.set('trust proxy', env.trustProxy);
 
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(
@@ -23,20 +25,34 @@ app.use(
 );
 app.use(compression());
 app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+// Only the payment gateways post form-encoded bodies (their callbacks). Nothing else reads them, so a form posted from
+// another website can't be turned into an API call.
+app.use('/api/v1/payments', express.urlencoded({ extended: true, limit: '256kb' }));
 app.use(cookieParser());
 
 if (!env.isProd) {
   app.use(morgan('dev'));
 }
 
+app.use('/api', requireTrustedOrigin);
+
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 600,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: isStorefrontServer,
 });
-app.use('/api', apiLimiter);
+// The storefront's server renders pages for every visitor from a single address, so it can't share a visitor-sized
+// budget: it has a far higher cap of its own (it proves who it is with REVALIDATE_SECRET).
+const storefrontLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 6000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => !isStorefrontServer(req),
+});
+app.use('/api', apiLimiter, storefrontLimiter);
 
 app.use('/api/v1', apiRouter);
 

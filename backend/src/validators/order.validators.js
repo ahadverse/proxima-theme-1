@@ -48,7 +48,7 @@ export const validateCouponSchema = z.object({
 
 export const updateOrderStatusSchema = z.object({
   status: z.enum(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned']),
-  note: z.string().optional(),
+  note: z.string().trim().max(500).optional(),
 });
 
 export const updateOrderPaymentSchema = z.object({

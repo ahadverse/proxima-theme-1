@@ -7,6 +7,20 @@ interface ApiEnvelope<T> {
   meta?: Record<string, unknown>;
 }
 
+/**
+ * The storefront's server renders pages for every visitor from a single address, so the API would count all of them as one
+ * visitor and start refusing page data after a few hundred uncached views. Its reads carry the secret it shares with the
+ * API (REVALIDATE_SECRET) so the API can tell it apart and give it a limit of its own.
+ *
+ * Server-only: the secret has no NEXT_PUBLIC_ prefix, so it does not exist in the browser's JavaScript, and nothing is
+ * added when this runs in a browser.
+ */
+function serverHeaders(): Record<string, string> {
+  if (typeof window !== 'undefined') return {};
+  const secret = process.env.REVALIDATE_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'dev_insecure_revalidate_secret');
+  return secret ? { 'x-storefront-key': secret } : {};
+}
+
 interface FetchOptions extends RequestInit {
   revalidate?: number | false;
   tags?: string[];
@@ -31,6 +45,7 @@ export async function apiGet<T>(path: string, options: FetchOptions = {}): Promi
     const res = await fetch(`${API_URL}${path}`, {
       ...init,
       credentials: 'include',
+      headers: { ...serverHeaders(), ...(init.headers as Record<string, string> | undefined) },
       next: revalidate !== undefined || tags ? { revalidate, tags: tags ?? [CATALOG_TAG] } : undefined,
     });
     if (!res.ok) return null;
@@ -56,6 +71,7 @@ export async function apiGetResult<T>(
     const res = await fetch(`${API_URL}${path}`, {
       ...init,
       credentials: 'include',
+      headers: { ...serverHeaders(), ...(init.headers as Record<string, string> | undefined) },
       next: revalidate !== undefined || tags ? { revalidate, tags: tags ?? [CATALOG_TAG] } : undefined,
     });
     if (!res.ok) return { status: res.status, data: null, meta: null };

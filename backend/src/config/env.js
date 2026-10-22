@@ -21,6 +21,20 @@ function required(name, fallback) {
   return value;
 }
 
+/**
+ * How many reverse proxies sit in front of the API: 1 (the default) for Cloudflare, nginx or a platform's load balancer,
+ * 0 / false when the API is reached directly. It decides which address the rate limits count a visitor under — a wrong
+ * value lets a client fake its address.
+ */
+function parseTrustProxy(value) {
+  if (value === undefined || value === '') return 1;
+  if (/^\d+$/.test(value)) return Number(value) || false;
+  if (value.toLowerCase() === 'false') return false;
+  return value; // e.g. "loopback" or a list of proxy addresses
+}
+
+const sameSiteSetting = (process.env.COOKIE_SAMESITE || '').toLowerCase();
+
 export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT) || 5000,
@@ -35,6 +49,15 @@ export const env = {
   adminJwtSecret: required('ADMIN_JWT_SECRET', 'dev_insecure_admin_jwt_secret'),
   adminJwtExpiresIn: required('ADMIN_JWT_EXPIRES_IN', '7d'),
   cookieDomain: process.env.COOKIE_DOMAIN || undefined,
+  // SameSite of the login cookies. Production defaults to 'none' (a storefront, an admin and an API on different sites
+  // need it); set COOKIE_SAMESITE=lax or strict when they share one site. Cross-site form posts are refused either way
+  // (see csrf.middleware.js).
+  cookieSameSite: ['lax', 'strict', 'none'].includes(sameSiteSetting)
+    ? sameSiteSetting
+    : process.env.NODE_ENV === 'production'
+      ? 'none'
+      : 'lax',
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
 
   // Shared with the storefront (its REVALIDATE_SECRET): lets a Settings save expire the storefront's cached
   // settings straight away. Development has a fallback like the JWT secrets; in production it must be set on

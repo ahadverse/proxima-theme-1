@@ -2,7 +2,14 @@ import { User } from '../models/User.js';
 import { ApiError } from '../utils/ApiError.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
-import { signCustomerToken, setAuthCookie, clearAuthCookie } from '../utils/generateToken.js';
+import {
+  signCustomerToken,
+  verifyCustomerToken,
+  revokeCookieToken,
+  setAuthCookie,
+  clearAuthCookie,
+} from '../utils/generateToken.js';
+import { burnPasswordCheck } from '../utils/passwordTiming.js';
 
 const COOKIE_NAME = 'maroon_customer_token';
 const MAX_ADDRESSES = 10;
@@ -29,7 +36,7 @@ export const register = asyncHandler(async (req, res) => {
     passwordHash,
   });
 
-  const token = signCustomerToken(user._id.toString());
+  const token = signCustomerToken(user._id.toString(), user.tokenVersion);
   setAuthCookie(res, COOKIE_NAME, token);
 
   sendSuccess(res, {
@@ -43,12 +50,14 @@ export const login = asyncHandler(async (req, res) => {
   const { phone, password } = req.body;
 
   const user = await User.findOne({ phone }).select('+passwordHash');
-  if (!user || !(await user.comparePassword(password))) {
+  // An unknown phone number costs the same bcrypt work as a wrong password, so the response time gives nothing away.
+  const passwordOk = user ? await user.comparePassword(password) : await burnPasswordCheck(password);
+  if (!user || !passwordOk) {
     throw ApiError.unauthorized('Invalid phone number or password');
   }
   if (!user.isActive) throw ApiError.forbidden('This account has been deactivated');
 
-  const token = signCustomerToken(user._id.toString());
+  const token = signCustomerToken(user._id.toString(), user.tokenVersion);
   setAuthCookie(res, COOKIE_NAME, token);
 
   sendSuccess(res, {
@@ -58,6 +67,8 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const logout = asyncHandler(async (req, res) => {
+  // The cookie is cleared in this browser; recording the token as well means a copy of it stops working everywhere.
+  await revokeCookieToken(req.cookies?.[COOKIE_NAME], verifyCustomerToken);
   clearAuthCookie(res, COOKIE_NAME);
   sendSuccess(res, { message: 'Logged out' });
 });
@@ -135,6 +146,9 @@ export const changePassword = asyncHandler(async (req, res) => {
   }
 
   user.passwordHash = await User.hashPassword(newPassword);
+  // Every other signed-in browser or phone stops working; this one gets a fresh token and carries on.
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
   await user.save();
+  setAuthCookie(res, COOKIE_NAME, signCustomerToken(user._id.toString(), user.tokenVersion));
   sendSuccess(res, { message: 'Password changed' });
 });

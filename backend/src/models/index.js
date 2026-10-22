@@ -17,3 +17,4 @@ export { IncompleteOrder } from './IncompleteOrder.js';
 export { FraudProfile } from './FraudProfile.js';
 export { InventoryLog } from './InventoryLog.js';
 export { AnalyticsEvent } from './AnalyticsEvent.js';
+export { RevokedToken } from './RevokedToken.js';

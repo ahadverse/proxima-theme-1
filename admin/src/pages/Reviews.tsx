@@ -53,7 +53,13 @@ export default function Reviews() {
     {
       header: 'Product',
       key: 'product',
-      render: (r) => <span className="font-medium text-slate-800">{r.product.title}</span>,
+      // A review outlives its product when the product is deleted; the API then sends `product: null`.
+      render: (r) =>
+        r.product ? (
+          <span className="font-medium text-slate-800">{r.product.title}</span>
+        ) : (
+          <span className="italic text-slate-500">Deleted product</span>
+        ),
     },
     { header: 'Customer', key: 'customer', render: (r) => r.customer.name },
     { header: 'Rating', key: 'rating', render: (r) => <Stars rating={r.rating} /> },

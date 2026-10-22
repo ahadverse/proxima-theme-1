@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { sanitizePageHtml } from '../utils/sanitizeHtml.js';
 
 /**
  * Pages the storefront has its own route for (/about, /privacy-policy…). Their address can't be changed, or
@@ -26,5 +27,14 @@ const pageSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Whatever route a page is written through, html text is cleaned before it is stored. (The controller used to clean only
+// text that arrived in the same request, so switching a page's format to html afterwards published its old text raw.)
+pageSchema.pre('validate', function cleanHtmlContent(next) {
+  if (this.contentFormat === 'html' && (this.isModified('content') || this.isModified('contentFormat'))) {
+    this.content = sanitizePageHtml(this.content);
+  }
+  next();
+});
 
 export const Page = mongoose.model('Page', pageSchema);
