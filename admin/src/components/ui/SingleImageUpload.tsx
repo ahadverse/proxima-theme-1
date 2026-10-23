@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, apiErrorMessage } from '@/lib/api';
+import { prepareImageForUpload } from '@/lib/prepareImage';
 import { cn } from '@/lib/cn';
 
 interface SingleImageUploadProps {
@@ -22,7 +23,7 @@ export function SingleImageUpload({ value, onChange, boxClassName = 'h-16 w-16' 
     setIsUploading(true);
     try {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', await prepareImageForUpload(file));
       const res = await api.post<{ data: { url: string } }>('/uploads/image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });

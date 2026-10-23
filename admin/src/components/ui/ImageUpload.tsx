@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, apiErrorMessage } from '@/lib/api';
+import { prepareImageForUpload } from '@/lib/prepareImage';
 import type { ProductImage } from '@/types/product';
 
 interface ImageUploadProps {
@@ -23,7 +24,7 @@ export function ImageUpload({ images, onChange, max = 8 }: ImageUploadProps) {
       const uploaded: ProductImage[] = [];
       for (const file of Array.from(files).slice(0, Math.max(0, max - images.length))) {
         const formData = new FormData();
-        formData.append('image', file);
+        formData.append('image', await prepareImageForUpload(file));
         const res = await api.post<{ data: ProductImage }>('/uploads/image', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });

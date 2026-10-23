@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
+import { sharedRateLimit } from '../middlewares/sharedRateLimit.js';
 import { capture, adminList, adminUpdateStatus } from '../controllers/incompleteOrder.controller.js';
 import { requireAdminAuth } from '../middlewares/adminAuth.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
@@ -13,7 +13,7 @@ const router = Router();
 
 // An open endpoint that writes a row: the checkout form sends one every time the shopper pauses typing, so this is
 // generous for a person and still stops a script filling the collection.
-const captureLimiter = rateLimit({
+const captureLimiter = sharedRateLimit('incomplete-order', {
   windowMs: 15 * 60 * 1000,
   limit: 120,
   standardHeaders: true,

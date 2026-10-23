@@ -35,14 +35,32 @@ function parseTrustProxy(value) {
 
 const sameSiteSetting = (process.env.COOKIE_SAMESITE || '').toLowerCase();
 
+/** A pasted "https://shop.example.com/" would never equal the browser's Origin header and would double the slash in links. */
+const withoutTrailingSlash = (url) => url.trim().replace(/\/+$/, '');
+
+/** Vercel runs every request on a short-lived instance that is not the only one — set automatically there. */
+const isVercel = Boolean(process.env.VERCEL);
+
 export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT) || 5000,
-  clientUrl: required('CLIENT_URL', 'http://localhost:3000'),
-  adminUrl: required('ADMIN_URL', 'http://localhost:5173'),
-  apiBaseUrl: required('API_BASE_URL', `http://localhost:${Number(process.env.PORT) || 5000}`),
+  clientUrl: withoutTrailingSlash(required('CLIENT_URL', 'http://localhost:3000')),
+  adminUrl: withoutTrailingSlash(required('ADMIN_URL', 'http://localhost:5173')),
+  apiBaseUrl: withoutTrailingSlash(required('API_BASE_URL', `http://localhost:${Number(process.env.PORT) || 5000}`)),
 
   mongodbUri: required('MONGODB_URI', 'mongodb://127.0.0.1:27017/maroon'),
+  // Connections each instance may open to MongoDB. Many instances can run at once on Vercel, and an Atlas cluster only
+  // allows so many connections in total (500 on the free tier), so each one gets a small pool there. Unset elsewhere =
+  // the driver's default.
+  mongoMaxPoolSize: Number(process.env.MONGODB_MAX_POOL_SIZE) || (isVercel ? 10 : undefined),
+  // Whether Mongoose creates missing indexes (unique emails, order numbers, TTLs...) by itself when it connects. Right for
+  // one long-running server; on Vercel it would re-check every index on every cold start, so there they are created once
+  // per deploy instead (`npm run indexes`, run by the vercel-build script).
+  autoIndex: process.env.MONGOOSE_AUTO_INDEX ? process.env.MONGOOSE_AUTO_INDEX === 'true' : !isVercel,
+  // Where the "too many attempts" counters (sign-in, orders, coupon guesses...) live. 'memory' counts per server process,
+  // which is only a real limit when there is one process; 'mongo' counts in the database so every instance shares it.
+  rateLimitStore: ['memory', 'mongo'].includes(process.env.RATE_LIMIT_STORE) ? process.env.RATE_LIMIT_STORE : isVercel ? 'mongo' : 'memory',
+  isVercel,
 
   jwtSecret: required('JWT_SECRET', 'dev_insecure_jwt_secret'),
   jwtExpiresIn: required('JWT_EXPIRES_IN', '7d'),
@@ -133,4 +151,13 @@ function assertProductionConfig() {
   }
 }
 
-if (env.isProd) assertProductionConfig();
+if (env.isProd) {
+  assertProductionConfig();
+
+  // Not fatal (a production-mode run on one machine legitimately uses localhost), but on a real deploy these mean the
+  // browser's requests are refused by CORS and payment gateways call back to nowhere.
+  const stillLocal = [['CLIENT_URL', env.clientUrl], ['ADMIN_URL', env.adminUrl], ['API_BASE_URL', env.apiBaseUrl]]
+    .filter(([, url]) => /localhost|127\.0\.0\.1/.test(url))
+    .map(([name]) => name);
+  if (stillLocal.length) console.warn(`${stillLocal.join(', ')} still point at localhost — set the deployed addresses.`);
+}

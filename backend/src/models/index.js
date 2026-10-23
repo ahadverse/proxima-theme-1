@@ -18,3 +18,4 @@ export { FraudProfile } from './FraudProfile.js';
 export { InventoryLog } from './InventoryLog.js';
 export { AnalyticsEvent } from './AnalyticsEvent.js';
 export { RevokedToken } from './RevokedToken.js';
+export { RateLimitHit } from './RateLimitHit.js';

@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import { sharedRateLimit } from './sharedRateLimit.js';
 
 const tooMany = (message) => ({ success: false, message });
 
@@ -7,7 +7,7 @@ const tooMany = (message) => ({ success: false, message });
  * gets its own, much tighter cap than the API-wide limit. Only failed attempts count — a customer
  * who signs in correctly never runs into it.
  */
-export const loginLimiter = rateLimit({
+export const loginLimiter = sharedRateLimit('login', {
   windowMs: 15 * 60 * 1000,
   limit: 10,
   skipSuccessfulRequests: true,
@@ -17,7 +17,7 @@ export const loginLimiter = rateLimit({
 });
 
 /** Account creation: generous for a household sharing one connection, tight enough to stop a script. */
-export const registerLimiter = rateLimit({
+export const registerLimiter = sharedRateLimit('register', {
   windowMs: 60 * 60 * 1000,
   limit: 20,
   standardHeaders: true,

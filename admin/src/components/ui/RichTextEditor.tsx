@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, apiErrorMessage } from '@/lib/api';
+import { prepareImageForUpload } from '@/lib/prepareImage';
 import { cn } from '@/lib/cn';
 
 interface RichTextEditorProps {
@@ -153,7 +154,7 @@ function Toolbar({ editor }: { editor: Editor }) {
     setIsUploading(true);
     try {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', await prepareImageForUpload(file));
       const res = await api.post<{ data: { url: string } }>('/uploads/image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });

@@ -39,7 +39,11 @@ export interface ListMeta {
 
 export function apiErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   if (axios.isAxiosError(error)) {
-    return (error.response?.data as { message?: string } | undefined)?.message ?? fallback;
+    const message = (error.response?.data as { message?: string } | undefined)?.message;
+    if (message) return message;
+    // The hosting platform turns away an oversized request itself, with a plain-text body the API never wrote.
+    if (error.response?.status === 413) return 'That file is too large to upload — try a smaller image';
+    return fallback;
   }
   return fallback;
 }

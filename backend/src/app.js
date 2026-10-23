@@ -7,6 +7,8 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 
 import { env } from './config/env.js';
+// Before the routes: it configures Mongoose, and that has to happen before any model is defined.
+import { ensureDatabase } from './config/db.js';
 import apiRouter from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middlewares/errorHandler.middleware.js';
 import { requireTrustedOrigin } from './middlewares/csrf.middleware.js';
@@ -54,7 +56,14 @@ const storefrontLimiter = rateLimit({
 });
 app.use('/api', apiLimiter, storefrontLimiter);
 
+// A long-running server (server.js) has connected before it takes its first request, so this is a no-op there. On Vercel
+// nothing runs at start-up: the first request on a fresh instance opens the connection here.
+app.use('/api', ensureDatabase);
+
 app.use('/api/v1', apiRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
+
+// Vercel runs the app exported from here; server.js imports the named export and listens itself.
+export default app;

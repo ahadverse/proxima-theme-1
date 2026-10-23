@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
+import { sharedRateLimit } from '../middlewares/sharedRateLimit.js';
 import {
   create,
   myOrders,
@@ -25,7 +25,7 @@ const router = Router();
 
 // Order numbers are short and the phone number is often known to others (a friend, a delivery rider),
 // so lookups are capped to stop someone walking through numbers looking for a hit.
-const trackLimiter = rateLimit({
+const trackLimiter = sharedRateLimit('order-track', {
   windowMs: 15 * 60 * 1000,
   limit: 30,
   standardHeaders: true,
@@ -35,7 +35,7 @@ const trackLimiter = rateLimit({
 
 // Placing an order is the one public write that costs real money (stock, a courier booking, a call to the customer), so a
 // script placing orders in bulk is capped. Generous enough for a family or a shop sharing one connection.
-const createOrderLimiter = rateLimit({
+const createOrderLimiter = sharedRateLimit('order-create', {
   windowMs: 15 * 60 * 1000,
   limit: 30,
   standardHeaders: true,
