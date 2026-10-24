@@ -1,4 +1,23 @@
-import sanitize from 'sanitize-html';
+import Module, { createRequire } from 'node:module';
+
+// sanitize-html is CommonJS and require()s htmlparser2, which has been ESM-only since v11. Node 22+ allows that, but
+// Vercel starts its functions with --no-experimental-require-module, so the whole API died on start-up with
+// ERR_REQUIRE_ESM. htmlparser2 is imported the ESM way here and put in the require cache, so sanitize-html's own
+// require() finds it loaded and never asks the loader. It behaves the same with and without the flag.
+async function loadSanitizer() {
+  const require = createRequire(import.meta.url);
+  const file = createRequire(require.resolve('sanitize-html')).resolve('htmlparser2');
+  if (!require.cache[file]) {
+    const loaded = new Module(file);
+    loaded.filename = file;
+    loaded.exports = await import('htmlparser2');
+    loaded.loaded = true;
+    require.cache[file] = loaded;
+  }
+  return (await import('sanitize-html')).default;
+}
+
+const sanitize = await loadSanitizer();
 
 // What the admin's rich text editor can produce, and nothing more. Pages are written by staff, but the HTML is
 // shown to every shopper, so it is cleaned on the way in: no scripts, no event handlers, no inline styles beyond
