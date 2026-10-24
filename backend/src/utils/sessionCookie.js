@@ -19,7 +19,6 @@ export function ensureSessionId(req, res) {
     httpOnly: true,
     secure: env.isProd,
     sameSite: env.cookieSameSite,
-    domain: env.cookieDomain,
     maxAge: 30 * 24 * 60 * 60 * 1000,
     path: '/',
   });

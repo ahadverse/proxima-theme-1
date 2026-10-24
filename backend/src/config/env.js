@@ -71,7 +71,6 @@ export const env = {
   jwtExpiresIn: required('JWT_EXPIRES_IN', '7d'),
   adminJwtSecret: required('ADMIN_JWT_SECRET', 'dev_insecure_admin_jwt_secret'),
   adminJwtExpiresIn: required('ADMIN_JWT_EXPIRES_IN', '7d'),
-  cookieDomain: process.env.COOKIE_DOMAIN || undefined,
   // SameSite of the login cookies. Production defaults to 'none' (a storefront, an admin and an API on different sites
   // need it); set COOKIE_SAMESITE=lax or strict when they share one site. Cross-site form posts are refused either way
   // (see csrf.middleware.js).
