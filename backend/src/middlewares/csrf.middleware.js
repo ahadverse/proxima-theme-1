@@ -1,5 +1,6 @@
 import { ApiError } from '../utils/ApiError.js';
 import { env } from '../config/env.js';
+import { logger } from '../utils/logger.js';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -33,7 +34,14 @@ export function requireTrustedOrigin(req, res, next) {
 
   const origin = req.get('origin');
   if (origin) {
-    return TRUSTED_ORIGINS.has(origin) ? next() : next(ApiError.forbidden('This request did not come from the store or its admin panel'));
+    if (TRUSTED_ORIGINS.has(origin)) return next();
+    // A fresh deploy whose CLIENT_URL / ADMIN_URL still name another address lands here on every sign-in; the function log
+    // says which address was refused and which are trusted, so the fix is a variable, not a hunt.
+    logger.warn(
+      `Refused ${req.method} ${req.originalUrl} from origin ${origin}; trusted origins: ${[...TRUSTED_ORIGINS].join(', ')}. ` +
+        'Set CLIENT_URL / ADMIN_URL to the addresses the shop and the admin are served from.'
+    );
+    return next(ApiError.forbidden('This request did not come from the store or its admin panel'));
   }
   if (req.get('sec-fetch-site') === 'cross-site') {
     return next(ApiError.forbidden('This request did not come from the store or its admin panel'));
