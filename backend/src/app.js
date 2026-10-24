@@ -36,6 +36,10 @@ if (!env.isProd) {
   app.use(morgan('dev'));
 }
 
+// Health check on the base address. It sits outside /api, so it opens the database connection itself: a 200 here means
+// the function started and reached MongoDB (503 if it could not).
+app.get('/', ensureDatabase, (req, res) => res.json({ success: true, message: 'Maroon API is running' }));
+
 app.use('/api', requireTrustedOrigin);
 
 const apiLimiter = rateLimit({

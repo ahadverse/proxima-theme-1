@@ -25,8 +25,6 @@ import { refreshCatalogOnWrite } from '../middlewares/refreshStorefront.middlewa
 
 const router = Router();
 
-router.get('/health', (req, res) => res.json({ success: true, message: 'Maroon API is running' }));
-
 router.use('/auth', authRoutes);
 router.use('/admin/auth', adminAuthRoutes);
 router.use('/settings', settingsRoutes);
