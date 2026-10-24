@@ -1,4 +1,27 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api/v1';
+const CONFIGURED_API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api/v1';
+
+// *.vercel.app is on the Public Suffix List: every project there is its own "site", so an API on one *.vercel.app name
+// setting a cookie for a page on another is a third-party cookie, and Chrome (Incognito, "block third-party cookies"),
+// Safari, Firefox and Brave drop it — customers would sign in and be signed straight out, and the guest cart and the
+// analytics visitor id would never stick. A browser on such a host calls the storefront's own /api/v1 instead
+// (next.config.ts forwards it to the API), which makes the cookie first-party. The server keeps the real address.
+const SHARED_SUFFIX = '.vercel.app';
+
+function resolveApiUrl(): string {
+  if (typeof window === 'undefined') return CONFIGURED_API_URL;
+  try {
+    const here = window.location.hostname;
+    const target = new URL(CONFIGURED_API_URL, window.location.origin);
+    if (target.hostname !== here && here.endsWith(SHARED_SUFFIX) && target.hostname.endsWith(SHARED_SUFFIX)) {
+      return target.pathname.replace(/\/+$/, '');
+    }
+  } catch {
+    // Not a parseable address — use it exactly as written.
+  }
+  return CONFIGURED_API_URL;
+}
+
+const API_URL = resolveApiUrl();
 
 interface ApiEnvelope<T> {
   success: boolean;

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Boxes, Eye, EyeOff, LineChart, Lock, Mail, ShieldCheck, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
-import { apiErrorMessage } from '@/lib/api';
+import { apiErrorMessage, SessionCookieError } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 
 const features = [
@@ -34,7 +34,7 @@ export default function Login() {
       await login(email, password);
       toast.success('Welcome back');
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Invalid email or password'));
+      toast.error(err instanceof SessionCookieError ? err.message : apiErrorMessage(err, 'Invalid email or password'));
     } finally {
       setIsSubmitting(false);
     }

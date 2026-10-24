@@ -1,6 +1,7 @@
+import axios from 'axios';
 import { create } from 'zustand';
 import type { AdminUser } from '@/types/admin';
-import { api, setUnauthorizedHandler } from '@/lib/api';
+import { api, SessionCookieError, setUnauthorizedHandler } from '@/lib/api';
 
 // A returning admin's identity is remembered so the app can render straight away and confirm the
 // session in the background — instead of a blocking full-screen spinner followed by a second,
@@ -46,9 +47,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isVerified: false,
 
   login: async (email, password) => {
-    const res = await api.post('/admin/auth/login', { email, password });
-    writeSessionHint(res.data.data);
-    set({ admin: res.data.data, status: 'authenticated', isVerified: true });
+    await api.post('/admin/auth/login', { email, password });
+    // The login reply only proves the password was right. Asking "who am I" straight away proves the browser kept the
+    // cookie too; if it did not, say so now rather than leaving a dashboard full of 401s.
+    let me;
+    try {
+      me = await api.get('/admin/auth/me');
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) throw new SessionCookieError();
+      throw error;
+    }
+    writeSessionHint(me.data.data);
+    set({ admin: me.data.data, status: 'authenticated', isVerified: true });
   },
 
   logout: async () => {

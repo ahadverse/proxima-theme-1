@@ -21,11 +21,40 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
 ];
 
+// On a *.vercel.app name the browser calls the storefront's own /api/v1 (see src/lib/api.ts) so the API's login, cart and
+// visitor cookies are first-party; this forwards those calls to the real API, with the visitor's address and cookies.
+// Never cached: the replies belong to one visitor.
+const apiAddress = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_API_URL ?? "");
+  } catch {
+    return null;
+  }
+})();
+const apiPath = apiAddress?.pathname.replace(/\/+$/, "") ?? "";
+const proxiedApi = apiAddress && apiPath ? { origin: apiAddress.origin, path: apiPath } : null;
+
 const nextConfig: NextConfig = {
   /* config options here */
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      ...(proxiedApi
+        ? [
+            {
+              source: `${proxiedApi.path}/:path*`,
+              headers: [
+                { key: "Cache-Control", value: "private, no-store" },
+                { key: "x-vercel-enable-rewrite-caching", value: "0" },
+              ],
+            },
+          ]
+        : []),
+    ];
+  },
+  async rewrites() {
+    return proxiedApi ? [{ source: `${proxiedApi.path}/:path*`, destination: `${proxiedApi.origin}${proxiedApi.path}/:path*` }] : [];
   },
   // Keeps all project docs consolidated under docs/ — stops `next dev` from
   // writing frontend/AGENTS.md on every run.
