@@ -2,6 +2,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// A deployment on Vercel is never "development". A NODE_ENV=development pasted in from a local .env would otherwise
+// switch off Secure / SameSite=None on the login cookies (sign-in works, the next request is 401), print stack traces
+// in error responses and allow the built-in dev secrets.
+if (process.env.VERCEL && process.env.VERCEL_ENV !== 'development') process.env.NODE_ENV = 'production';
+
 const DEFAULT_TIMEZONE = 'Asia/Dhaka';
 
 /** A mistyped STORE_TIMEZONE would otherwise only blow up later, inside an analytics query. */
