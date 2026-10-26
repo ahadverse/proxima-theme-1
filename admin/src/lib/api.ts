@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { IS_DEMO } from '@/demo/config';
+import { demoAdapter } from '@/demo/adapter';
 
 // *.vercel.app is on the Public Suffix List: every project there is its own "site", so an API on
 // proxima-api.vercel.app setting a cookie for a page on proxima-admin.vercel.app is a third-party cookie, and Chrome
@@ -24,6 +26,8 @@ function resolveBaseUrl(): string {
 export const api = axios.create({
   baseURL: resolveBaseUrl(),
   withCredentials: true,
+  // The live demo's build answers every call from the visitor's own copy of the shop (src/demo).
+  ...(IS_DEMO ? { baseURL: '/api/v1', adapter: demoAdapter } : {}),
 });
 
 /**

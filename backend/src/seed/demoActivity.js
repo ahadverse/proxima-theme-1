@@ -8,7 +8,6 @@ import { User } from '../models/User.js';
 import { Review } from '../models/Review.js';
 import { env } from '../config/env.js';
 import { getSettingsDoc } from '../services/settings.service.js';
-import { generateOrderNumber } from '../utils/orderNumber.js';
 import { dayKey, recentDayKeys, startOfDay } from '../utils/timezone.js';
 
 /**
@@ -97,6 +96,24 @@ function variantLabelOf(variant) {
   return (variant?.attributes ?? []).map((a) => a.value).filter(Boolean).join(' / ') || null;
 }
 
+/**
+ * An order number in the shop's format, dated the day the order was placed (as a real one would be), never one already
+ * handed out: two months of orders under one date prefix would otherwise clash on the unique index now and then.
+ */
+function orderNumbers(rand) {
+  const used = new Set();
+  return (placedAt) => {
+    const day = dayKey(placedAt, TZ).slice(2).replaceAll('-', '');
+    for (;;) {
+      const number = `MRN-${day}-${String(between(rand, 0, 999999)).padStart(6, '0')}`;
+      if (!used.has(number)) {
+        used.add(number);
+        return number;
+      }
+    }
+  };
+}
+
 export async function seedDemoActivity() {
   const products = await Product.find({ status: 'active' }).lean();
   if (products.length === 0) return;
@@ -108,6 +125,7 @@ export async function seedDemoActivity() {
   const now = Date.now();
 
   const popular = weightedPicker(rand, products, (p) => (1 + (p.isBestSeller ? 4 : 0) + (p.isTrending ? 3 : 0) + (p.isFeatured ? 1 : 0)) / Math.sqrt(1 + p.basePrice / 6000));
+  const orderNumberFor = orderNumbers(rand);
 
   // ---- coupons first, so some orders can carry one
   const coupons = [
@@ -211,7 +229,7 @@ export async function seedDemoActivity() {
 
       orders.push({
         doc: {
-          orderNumber: generateOrderNumber(),
+          orderNumber: orderNumberFor(placedAt),
           customer: null,
           guestInfo: { name, email: rand() < 0.5 ? `${name.split(' ')[0].toLowerCase()}${between(rand, 1, 99)}@example.com` : undefined, phone },
           items,
@@ -220,7 +238,7 @@ export async function seedDemoActivity() {
           coupon,
           paymentMethod,
           paymentStatus,
-          paymentDetails: prepaid && paymentStatus !== 'pending' ? { transactionId: `DEMO-${between(rand, 100000, 999999)}`, gatewayResponse: { demo: true }, paidAt: placedAt } : {},
+          paymentDetails: prepaid && paymentStatus !== 'pending' ? { transactionId: `DEMO-${between(rand, 100000, 999999)}`, gatewayResponse: { demo: true }, paidAt: new Date(placedAt) } : {},
           orderStatus: status,
           statusHistory: history,
           courier: booked

@@ -1,27 +1,22 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Script from 'next/script';
-import { Toaster } from 'sonner';
 import './globals.css';
-import { apiGet } from '@/lib/api';
+import { loadNavCategories } from '@/lib/catalog';
 import { getPublicSettings } from '@/lib/settings';
 import { SITE_URL } from '@/lib/site';
-import { navCategories } from '@/lib/placeholder-data';
-import { buildCategoryTree, type RawCategory } from '@/lib/mappers';
-import { Header } from '@/components/layout/Header';
-import type { CategoryWithChildren } from '@/types/catalog';
-import { TopUtilityBar } from '@/components/layout/TopUtilityBar';
 import { DemoBanner } from '@/components/layout/DemoBanner';
-import { Footer } from '@/components/layout/Footer';
-import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
-import { QuickViewModal } from '@/components/product/QuickViewModal';
-import { CartDrawer } from '@/components/cart/CartDrawer';
+import { SiteChrome, themeStyle } from '@/components/layout/SiteChrome';
+import { DEMO_ON_SERVER } from '@/demo/config';
+import { DemoShell } from '@/demo/DemoShell';
+import { demoMetadata } from '@/demo/metadata';
 
 const inter = Inter({ variable: '--font-inter', subsets: ['latin'] });
 
 // The default title and description come from Settings → SEO in the admin panel, so changing them there
 // changes what search results and link previews show — no redeploy.
 export async function generateMetadata(): Promise<Metadata> {
+  if (DEMO_ON_SERVER) return demoMetadata;
   const settings = await getPublicSettings();
   return {
     metadataBase: new URL(SITE_URL),
@@ -34,16 +29,19 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-async function getCategories(): Promise<CategoryWithChildren[]> {
-  const categories = await apiGet<RawCategory[]>('/categories?all=true', { revalidate: 300 });
-  // Demo categories only while the API is unreachable; a store with none shows no category menu.
-  if (categories) return buildCategoryTree(categories);
-  return navCategories.map((c) => ({ ...c, children: [] }));
-}
-
 export default async function RootLayout({ children }: LayoutProps<'/'>) {
-  const [settings, categories] = await Promise.all([getPublicSettings(), getCategories()]);
-  const { theme } = settings;
+  // The demo build's server has none of the visitor's data: the shop's frame is drawn in the browser (src/demo).
+  if (DEMO_ON_SERVER) {
+    return (
+      <html lang="en" className={`${inter.variable} h-full`}>
+        <body className="flex min-h-full flex-col antialiased">
+          <DemoShell>{children}</DemoShell>
+        </body>
+      </html>
+    );
+  }
+
+  const [settings, categories] = await Promise.all([getPublicSettings(), loadNavCategories()]);
 
   // These ids are written into the page's script, so only the exact shapes Google issues get through (the API
   // checks them too).
@@ -56,21 +54,8 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
       ? `${settings.googleAdsId}/${settings.googleAdsPurchaseLabel}`
       : '';
 
-  const themeStyle = {
-    '--brand-bg-dark': theme.bgDark,
-    '--brand-surface-dark': theme.surfaceDark,
-    '--brand-primary': theme.primary,
-    '--brand-primary-dark': theme.primaryDark,
-    '--brand-accent': theme.accent,
-    '--brand-gradient-from': theme.gradientFrom,
-    '--brand-gradient-to': theme.gradientTo,
-    '--brand-card': theme.card,
-    '--brand-text-on-dark': theme.textOnDark,
-    '--brand-text-muted': theme.textMuted,
-  } as React.CSSProperties;
-
   return (
-    <html lang="en" className={`${inter.variable} h-full`} style={themeStyle}>
+    <html lang="en" className={`${inter.variable} h-full`} style={themeStyle(settings.theme)}>
       <body className="flex min-h-full flex-col antialiased">
         {settings.facebookPixelId && (
           <>
@@ -115,15 +100,13 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
             </Script>
           </>
         )}
-        {settings.isDemo && <DemoBanner cta={settings.demoCta} />}
-        <TopUtilityBar hotline={settings.hotlinePhone} />
-        <Header storeName={settings.storeName} logo={settings.logo} categories={categories} />
-        <main className="flex-1">{children}</main>
-        <Footer settings={settings} />
-        <WhatsAppButton phone={settings.socialLinks.whatsappNumber} />
-        <QuickViewModal />
-        <CartDrawer />
-        <Toaster position="top-right" richColors />
+        <SiteChrome
+          settings={settings}
+          categories={categories}
+          banner={settings.isDemo && <DemoBanner cta={settings.demoCta} />}
+        >
+          {children}
+        </SiteChrome>
       </body>
     </html>
   );

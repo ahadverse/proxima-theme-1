@@ -121,7 +121,8 @@ async function nagadRequest(url, { method = 'GET', headers, body } = {}) {
   }
 }
 
-export async function initPayment({ order, settings, clientIp }) {
+// `callbackUrl` replaces the usual return address (the live demo's payments come back to their own route).
+export async function initPayment({ order, settings, clientIp, callbackUrl }) {
   const gw = settings.paymentGateways.nagad;
   const privateKey = loadKey(decryptSecret(gw.merchantPrivateKey), 'private');
   const publicKey = loadKey(decryptSecret(gw.pgPublicKey), 'public');
@@ -179,7 +180,7 @@ export async function initPayment({ order, settings, clientIp }) {
   const completeBody = {
     sensitiveData: encrypt(completeSensitive, publicKey),
     signature: sign(completeSensitive, privateKey),
-    merchantCallbackURL: `${env.apiBaseUrl}/api/v1/payments/nagad/callback`,
+    merchantCallbackURL: callbackUrl ?? `${env.apiBaseUrl}/api/v1/payments/nagad/callback`,
     additionalMerchantInfo: {
       serviceName: String(settings.storeName || 'Maroon').slice(0, 25),
       orderNumber: order.orderNumber,

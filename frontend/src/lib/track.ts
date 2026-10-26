@@ -1,4 +1,6 @@
 import { API_URL } from '@/lib/api';
+import { IS_DEMO } from '@/demo/config';
+import { demoRequest } from '@/demo/client/hub';
 
 /**
  * First-party analytics: product views and add-to-carts, reported to the store's own backend
@@ -18,6 +20,12 @@ const VIEW_WINDOW_MS = 30 * 60 * 1000;
 
 function send(body: Record<string, unknown>) {
   if (typeof body.product !== 'string' || !OBJECT_ID.test(body.product)) return;
+
+  // The demo build records it in the visitor's own copy of the shop.
+  if (IS_DEMO) {
+    demoRequest('POST', '/analytics/track', body).catch(() => {});
+    return;
+  }
 
   fetch(`${API_URL}/analytics/track`, {
     method: 'POST',

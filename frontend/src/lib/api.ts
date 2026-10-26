@@ -1,3 +1,6 @@
+import { IS_DEMO } from '@/demo/config';
+import { demoRequest } from '@/demo/client/hub';
+
 const CONFIGURED_API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api/v1';
 
 // *.vercel.app is on the Public Suffix List: every project there is its own "site", so an API on one *.vercel.app name
@@ -50,6 +53,18 @@ interface FetchOptions extends RequestInit {
 }
 
 /**
+ * fetch() for an API path. In the demo build the API is the visitor's own copy of the shop in their browser (src/demo), so
+ * the call is answered there — and on the demo's server there is nothing to ask at all (its pages never get this far).
+ */
+async function apiFetch(path: string, init: RequestInit & { next?: { revalidate?: number | false; tags?: string[] } }) {
+  if (!IS_DEMO) return fetch(`${API_URL}${path}`, init);
+  if (typeof window === 'undefined') throw new Error('The demo has no server-side data');
+  const body = typeof init.body === 'string' ? JSON.parse(init.body) : undefined;
+  const reply = await demoRequest(init.method ?? 'GET', path, body);
+  return new Response(JSON.stringify(reply.body), { status: reply.status, headers: { 'Content-Type': 'application/json' } });
+}
+
+/**
  * Every cached read that doesn't name its own tag (the public settings and the admin-written pages do) is the shop's
  * catalogue: products, brands, categories, banners, blog, FAQ. The API calls /api/revalidate with this tag after an admin
  * saves any of them, so a change shows on the next page load instead of when the time-based copy runs out.
@@ -65,7 +80,7 @@ const CATALOG_TAG = 'catalog';
 export async function apiGet<T>(path: string, options: FetchOptions = {}): Promise<T | null> {
   try {
     const { revalidate, tags, ...init } = options;
-    const res = await fetch(`${API_URL}${path}`, {
+    const res = await apiFetch(path, {
       ...init,
       credentials: 'include',
       headers: { ...serverHeaders(), ...(init.headers as Record<string, string> | undefined) },
@@ -91,7 +106,7 @@ export async function apiGetResult<T>(
 ): Promise<{ status: number; data: T | null; meta: Record<string, unknown> | null }> {
   try {
     const { revalidate, tags, ...init } = options;
-    const res = await fetch(`${API_URL}${path}`, {
+    const res = await apiFetch(path, {
       ...init,
       credentials: 'include',
       headers: { ...serverHeaders(), ...(init.headers as Record<string, string> | undefined) },
@@ -111,7 +126,7 @@ export async function apiMutate<T>(
   body?: unknown
 ): Promise<{ ok: boolean; data: T | null; message: string }> {
   try {
-    const res = await fetch(`${API_URL}${path}`, {
+    const res = await apiFetch(path, {
       method,
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

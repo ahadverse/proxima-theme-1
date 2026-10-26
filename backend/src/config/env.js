@@ -128,6 +128,17 @@ export const env = {
     // When the demo's visitor data is wiped, in STORE_TIMEZONE.
     resetCron: process.env.DEMO_RESET_CRON || '0 3 * * *',
   },
+
+  // The browser-only live demo's payments service (docs/DEMO_MODE_PLAN.md §4.7, services/demoPayments.service.js). Its
+  // orders exist only in visitors' browsers, so this starts sandbox payments for them and stores nothing. Off — the routes
+  // don't exist — unless DEMO_PAYMENTS_ORIGINS names the demo storefront's address (comma-separated for several).
+  demoPayments: {
+    origins: (process.env.DEMO_PAYMENTS_ORIGINS || '').split(',').map(withoutTrailingSlash).filter(Boolean),
+    // Signs the payment tickets and receipts. Unset = derived from JWT_SECRET.
+    secret: process.env.DEMO_PAYMENTS_SECRET || '',
+    // No demo payment is started for more than this, in taka.
+    maxAmount: Number(process.env.DEMO_PAYMENTS_MAX_AMOUNT) || 500000,
+  },
 };
 
 /**

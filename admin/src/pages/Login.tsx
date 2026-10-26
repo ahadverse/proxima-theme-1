@@ -7,6 +7,9 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 import { apiErrorMessage, SessionCookieError } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
+import { IS_DEMO } from '@/demo/config';
+import { DemoBar } from '@/demo/DemoBar';
+import { DemoLogins } from '@/demo/DemoLogins';
 
 const features = [
   { icon: Boxes, text: 'Manage products, categories, and inventory in one place' },
@@ -27,11 +30,10 @@ export default function Login() {
     return <Navigate to="/" replace />;
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function signIn(withEmail: string, withPassword: string) {
     setIsSubmitting(true);
     try {
-      await login(email, password);
+      await login(withEmail, withPassword);
       toast.success('Welcome back');
     } catch (err) {
       toast.error(err instanceof SessionCookieError ? err.message : apiErrorMessage(err, 'Invalid email or password'));
@@ -40,9 +42,14 @@ export default function Login() {
     }
   }
 
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    void signIn(email, password);
+  }
+
   return (
     <>
-      <DemoBanner floating />
+      {IS_DEMO ? <DemoBar floating /> : <DemoBanner floating />}
       <div className="flex min-h-screen bg-slate-50">
         <div className="relative hidden flex-1 flex-col justify-between overflow-hidden bg-brand-bg-dark p-12 text-white lg:flex">
           <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-brand-accent/20 blur-3xl" />
@@ -132,6 +139,17 @@ export default function Login() {
                 Sign in
               </Button>
             </form>
+
+            {IS_DEMO && (
+              <DemoLogins
+                busy={isSubmitting}
+                onUse={(demoEmail, demoPassword) => {
+                  setEmail(demoEmail);
+                  setPassword(demoPassword);
+                  void signIn(demoEmail, demoPassword);
+                }}
+              />
+            )}
           </motion.div>
         </div>
       </div>

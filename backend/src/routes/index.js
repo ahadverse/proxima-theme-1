@@ -21,7 +21,9 @@ import reviewAdminRoutes from './reviewAdmin.routes.js';
 import bannerRoutes from './banner.routes.js';
 import pageRoutes from './page.routes.js';
 import analyticsRoutes from './analytics.routes.js';
+import demoPaymentRoutes from './demoPayments.routes.js';
 import { refreshCatalogOnWrite } from '../middlewares/refreshStorefront.middleware.js';
+import { isDemoPaymentsEnabled } from '../services/demoPayments.service.js';
 
 const router = Router();
 
@@ -47,5 +49,7 @@ router.use('/reviews', refreshCatalogOnWrite, reviewAdminRoutes);
 router.use('/banners', refreshCatalogOnWrite, bannerRoutes);
 router.use('/pages', pageRoutes);
 router.use('/analytics', analyticsRoutes);
+// The browser-only live demo's sandbox payments — not there at all unless DEMO_PAYMENTS_ORIGINS is set.
+if (isDemoPaymentsEnabled()) router.use('/demo-payments', demoPaymentRoutes);
 
 export default router;

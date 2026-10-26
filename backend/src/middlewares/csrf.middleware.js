@@ -19,6 +19,9 @@ const TRUSTED_ORIGINS = new Set([env.clientUrl, env.adminUrl].map(originOf).filt
 // calls carry no login cookie — they are verified with the gateway instead.
 const GATEWAY_CALLBACKS = /^\/v1\/payments\//;
 
+// The browser-only live demo's payments service, which its storefront (DEMO_PAYMENTS_ORIGINS) calls. It uses no cookie.
+const DEMO_PAYMENTS = /^\/v1\/demo-payments\//;
+
 /**
  * The login cookies are SameSite=None in production (the storefront, the admin and the API are normally on different
  * sites), so a browser attaches them to a form that any other website posts to this API. Every browser labels such a
@@ -35,6 +38,7 @@ export function requireTrustedOrigin(req, res, next) {
   const origin = req.get('origin');
   if (origin) {
     if (TRUSTED_ORIGINS.has(origin)) return next();
+    if (DEMO_PAYMENTS.test(req.path) && env.demoPayments.origins.includes(origin)) return next();
     // A fresh deploy whose CLIENT_URL / ADMIN_URL still name another address lands here on every sign-in; the function log
     // says which address was refused and which are trusted, so the fix is a variable, not a hunt.
     logger.warn(

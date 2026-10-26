@@ -24,8 +24,9 @@ const belongsTo = (order, invoice) =>
 // https://paystation.com.bd/documentation ("Hosted Checkout"): POST /initiate-payment as a form body with
 // merchantId + password (no API key). PayStation takes ONE callback_url and appends status, invoice_number
 // and trx_id to it (see the official plugin, github.com/Pay-Station/pgw-wp-plugin). The order number is also
-// put in the callback's path, so finding the order never depends on what PayStation appends.
-export async function initPayment({ order, settings }) {
+// put in the callback's path, so finding the order never depends on what PayStation appends. `callbackUrl` replaces that
+// address (the live demo's payments, services/demoPayments.service.js, come back to their own route).
+export async function initPayment({ order, settings, callbackUrl }) {
   const gw = settings.paymentGateways.paystation;
   const invoice = invoiceFor(order);
 
@@ -43,7 +44,7 @@ export async function initPayment({ order, settings }) {
       cust_phone: order.shippingAddress.phone,
       // cust_email is required by PayStation, but logged-in orders carry no email.
       cust_email: order.guestInfo?.email || settings.supportEmail || 'noreply@example.com',
-      callback_url: `${env.apiBaseUrl}/api/v1/payments/paystation/callback/${encodeURIComponent(order.orderNumber)}`,
+      callback_url: callbackUrl ?? `${env.apiBaseUrl}/api/v1/payments/paystation/callback/${encodeURIComponent(order.orderNumber)}`,
     }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });

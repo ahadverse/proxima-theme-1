@@ -19,10 +19,13 @@ export const app = express();
 app.set('trust proxy', env.trustProxy);
 
 app.use(helmet({ crossOriginResourcePolicy: false }));
+// The browser-only live demo's storefront may call the demo-payments service, and nothing else: its own data lives in the
+// visitor's browser (DEMO_PAYMENTS_ORIGINS; empty on a customer's copy).
+const DEMO_PAYMENTS_PATH = /^\/api\/v1\/demo-payments\//;
 app.use(
-  cors({
-    origin: [env.clientUrl, env.adminUrl],
-    credentials: true,
+  cors((req, callback) => {
+    const demo = DEMO_PAYMENTS_PATH.test(req.path) ? env.demoPayments.origins : [];
+    callback(null, { origin: [env.clientUrl, env.adminUrl, ...demo], credentials: true });
   })
 );
 app.use(compression());

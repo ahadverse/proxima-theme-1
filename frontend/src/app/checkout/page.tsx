@@ -1,15 +1,10 @@
 import type { Metadata } from 'next';
-import { CheckoutForm } from '@/components/checkout/CheckoutForm';
-import { getPublicSettings } from '@/lib/settings';
+import { DEMO_ON_SERVER } from '@/demo/config';
+import { DemoPage } from '@/demo/DemoPage';
+import CheckoutPage from './CheckoutPage';
 
 export const metadata: Metadata = { title: 'Checkout', robots: { index: false } };
 
-export default async function CheckoutPage() {
-  const settings = await getPublicSettings();
-
-  return (
-    <div className="mx-auto max-w-[1240px] px-4 py-6 md:px-6 md:py-10">
-      <CheckoutForm settings={settings} />
-    </div>
-  );
+export default function Page() {
+  return DEMO_ON_SERVER ? <DemoPage route="checkout" /> : <CheckoutPage />;
 }

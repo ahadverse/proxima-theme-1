@@ -6,6 +6,8 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { apiErrorMessage } from '@/lib/api';
 import { ThemedToaster } from '@/components/layout/ThemedToaster';
+import { IS_DEMO } from '@/demo/config';
+import { DemoGate } from '@/demo/DemoGate';
 import App from './App.tsx';
 import './index.css';
 
@@ -51,7 +53,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <App />
+        {IS_DEMO ? (
+          <DemoGate>
+            <App />
+          </DemoGate>
+        ) : (
+          <App />
+        )}
         <ThemedToaster />
       </BrowserRouter>
     </QueryClientProvider>

@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# the demo's data hub, built by scripts/demo/build-hub.mjs
+/public/demo-hub/

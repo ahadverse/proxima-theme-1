@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { apiGet, apiGetResult } from '@/lib/api';
 import { getBlogPosts } from '@/lib/blog';
 import { SITE_URL } from '@/lib/site';
+import { IS_DEMO } from '@/demo/config';
 
 interface Entry {
   slug: string;
@@ -29,6 +30,8 @@ const lastModified = (entry: Entry) => (entry.updatedAt ? new Date(entry.updated
 // What the sitemap lists is what's really in the store. If the API can't be reached the product,
 // category and brand pages are left out — the demo catalogue's URLs don't exist on a live store.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // The demo isn't indexed (robots.ts), and its server has no catalogue to list.
+  if (IS_DEMO) return [];
   const staticRoutes = [
     '',
     '/products',

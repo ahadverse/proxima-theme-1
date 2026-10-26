@@ -18,6 +18,8 @@ import { useCartStore } from '@/store/cartStore';
 import { itemsFromCart, rememberPurchaseItems, trackBeginCheckout } from '@/lib/pixel';
 import type { CustomerUser } from '@/types/user';
 import type { PublicSettings } from '@/types/settings';
+import { IS_DEMO } from '@/demo/config';
+import { DemoPaymentHelp } from '@/demo/ui/DemoPaymentHelp';
 
 export function CheckoutForm({ settings }: { settings: PublicSettings }) {
   const user = useAuthStore((s) => s.user);
@@ -330,6 +332,7 @@ function CheckoutFormBody({ settings, user }: { settings: PublicSettings; user: 
           <div>
             <p className="mb-2 text-sm font-semibold text-slate-700">Payment Method</p>
             <PaymentMethodRadio methods={paymentMethods} value={paymentMethod} onChange={setPaymentMethod} />
+            {IS_DEMO && <DemoPaymentHelp method={paymentMethod} />}
           </div>
 
           <p className="text-xs text-slate-500">

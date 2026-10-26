@@ -67,14 +67,15 @@ async function post(gw, idToken, path, body) {
   return res.json();
 }
 
-export async function initPayment({ order, settings }) {
+// `callbackUrl` replaces the usual return address (the live demo's payments come back to their own route).
+export async function initPayment({ order, settings, callbackUrl }) {
   const gw = settings.paymentGateways.bkash;
   const idToken = await grantToken(gw);
 
   // Create Payment fields exactly as documented (there is no `mode` field in the current API).
   const data = await post(gw, idToken, '/payment/create', {
     payerReference: order.shippingAddress.phone,
-    callbackURL: `${env.apiBaseUrl}/api/v1/payments/bkash/callback`,
+    callbackURL: callbackUrl ?? `${env.apiBaseUrl}/api/v1/payments/bkash/callback`,
     amount: Number(order.pricing.grandTotal).toFixed(2),
     currency: 'BDT',
     intent: 'sale',

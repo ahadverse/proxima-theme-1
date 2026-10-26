@@ -1,7 +1,14 @@
 import { apiGet, apiGetResult } from '@/lib/api';
-import { mapBrand, mapCategory, mapProductCard, type RawProduct } from '@/lib/mappers';
+import { buildCategoryTree, mapBrand, mapCategory, mapProductCard, type RawCategory, type RawProduct } from '@/lib/mappers';
 import { brandStrip, navCategories } from '@/lib/placeholder-data';
-import type { BrandSummary, CategorySummary, ProductCard } from '@/types/catalog';
+import type { BrandSummary, CategorySummary, CategoryWithChildren, ProductCard } from '@/types/catalog';
+
+/** The header's category menu. Demo categories only while the API is unreachable; a store with none shows no menu. */
+export async function loadNavCategories(): Promise<CategoryWithChildren[]> {
+  const categories = await apiGet<RawCategory[]>('/categories?all=true', { revalidate: 300 });
+  if (categories) return buildCategoryTree(categories);
+  return navCategories.map((c) => ({ ...c, children: [] }));
+}
 
 export interface PageMeta {
   total: number;

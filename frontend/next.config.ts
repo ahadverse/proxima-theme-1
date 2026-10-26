@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { NextConfig } from "next";
 
 // Hosts the storefront may show images from besides the built-in ones below — the address uploaded images are served
@@ -21,6 +23,44 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
 ];
 
+// The live sales demo is its own build of the store (NEXT_PUBLIC_DEMO_MODE=true — see src/demo and docs/DEMO_MODE_PLAN.md).
+// Its data hub (public/demo-hub, built by scripts/demo/build-hub.mjs) is framed by the demo admin, so that page — and only
+// that page — may be framed, and only by the demo admin's own address. Nothing in the demo is for search engines.
+const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+// The hub file's version (a hash of its content, written by scripts/demo/build-hub.mjs). The browser asks for the hub with it in
+// the address, so a new engine is never served from an old cache. `npm run build` / `dev` build the hub first (prepare.mjs).
+const demoHubVersion = (() => {
+  if (!isDemo) return undefined;
+  if (process.env.NEXT_PUBLIC_DEMO_HUB_VERSION) return process.env.NEXT_PUBLIC_DEMO_HUB_VERSION;
+  try {
+    return fs.readFileSync(path.join(process.cwd(), "public", "demo-hub", "version.txt"), "utf8").trim();
+  } catch {
+    return undefined;
+  }
+})();
+// Left out in a production build, no other site may frame the hub (a storefront-only demo); in development the admin's usual port.
+const demoAdminOrigins = (process.env.NEXT_PUBLIC_DEMO_ADMIN_URL ?? (process.env.NODE_ENV === "production" ? "" : "http://localhost:5173"))
+  .split(",")
+  .map((url) => url.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+const demoHeaders = [
+  {
+    source: "/demo-hub/:path*",
+    headers: [
+      { key: "Content-Security-Policy", value: `frame-ancestors 'self' ${demoAdminOrigins.join(" ")}; object-src 'none'` },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "X-Robots-Tag", value: "noindex, nofollow" },
+    ],
+  },
+  // A built hub.js, seed.json and og.png are addressed with ?v=<content hash>; the page that loads them must never be stale
+  // (and in development the hub is rebuilt under the same address).
+  ...(process.env.NODE_ENV === "production"
+    ? [{ source: "/demo-hub/:file((?!index\\.html).*)", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] }]
+    : []),
+  { source: "/demo-hub/index.html", headers: [{ key: "Cache-Control", value: "no-cache" }] },
+  { source: "/((?!demo-hub/).*)", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+];
+
 // On a *.vercel.app name the browser calls the storefront's own /api/v1 (see src/lib/api.ts) so the API's login, cart and
 // visitor cookies are first-party; this forwards those calls to the real API, with the visitor's address and cookies.
 // Never cached: the replies belong to one visitor.
@@ -37,9 +77,12 @@ const proxiedApi = apiAddress && apiPath ? { origin: apiAddress.origin, path: ap
 const nextConfig: NextConfig = {
   /* config options here */
   poweredByHeader: false,
+  ...(demoHubVersion ? { env: { NEXT_PUBLIC_DEMO_HUB_VERSION: demoHubVersion } } : {}),
   async headers() {
     return [
-      { source: "/:path*", headers: securityHeaders },
+      // In the demo, the data hub's page is left out: it has its own rule (it may be framed by the demo admin).
+      { source: isDemo ? "/((?!demo-hub/).*)" : "/:path*", headers: securityHeaders },
+      ...(isDemo ? demoHeaders : []),
       ...(proxiedApi
         ? [
             {
@@ -74,6 +117,19 @@ const nextConfig: NextConfig = {
     ],
   },
   turbopack: {
+    // A normal build has none of the demo's UI or hub client: src/demo/normalBuild.tsx stands in for them (see that file).
+    // Only the demo build (NEXT_PUBLIC_DEMO_MODE=true) gets the real modules.
+    ...(isDemo
+      ? {}
+      : {
+          resolveAlias: {
+            "@/demo/DemoPage": "./src/demo/normalBuild.tsx",
+            "@/demo/DemoShell": "./src/demo/normalBuild.tsx",
+            "@/demo/client/hub": "./src/demo/normalBuild.tsx",
+            "@/demo/ui/DemoPaymentHelp": "./src/demo/normalBuild.tsx",
+            "@/demo/ui/DemoPaymentPage": "./src/demo/normalBuild.tsx",
+          },
+        }),
     rules: {
       "*.css": {
         loaders: ["@tailwindcss/turbopack"],
